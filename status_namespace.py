@@ -12,7 +12,6 @@ from utils.network_utils import standardize_host_ip, resolve_mdns
 
 # Services and logic
 from services.ph_service import get_latest_ph_reading
-from services.ec_service import get_latest_ec_reading
 from utils.settings_utils import load_settings
 from services.auto_dose_state import auto_dose_state
 from services.plant_service import get_weeks_since_start
@@ -236,111 +235,9 @@ def emit_status_update(force_emit=False):
         # -----------------------------------------------------------
         #  1) Retrieve local roles (fill/drain) and valve_relay device
         # -----------------------------------------------------------
-        fill_mode  = settings.get("fill_valve_mode", "local")
-        drain_mode = settings.get("drain_valve_mode", "local")
-
-        fill_ip    = settings.get("fill_valve_ip", "").strip()
-        fill_id    = settings.get("fill_valve", "")  # e.g. "4"
-        fill_label = settings.get("fill_valve_label", "Fill Valve")
-
-        drain_ip    = settings.get("drain_valve_ip", "").strip()
-        drain_id    = settings.get("drain_valve", "")
-        drain_label = settings.get("drain_valve_label", "Drain Valve")
+        
 
         usb_roles = settings.get("usb_roles", {})
-        local_valve_device = usb_roles.get("valve_relay", None)
-
-        # -----------------------------------------------------------
-        #  2) Connect to remote if fill/drain is remote
-        # -----------------------------------------------------------
-        if fill_mode == "remote" and fill_ip:
-            connect_to_remote_if_needed(fill_ip)
-        if drain_mode == "remote" and drain_ip:
-            connect_to_remote_if_needed(drain_ip)
-
-        # -----------------------------------------------------------
-        #  3) Gather any local valve statuses
-        # -----------------------------------------------------------
-        from services.valve_relay_service import get_valve_status
-        local_valve_map = {}  # label -> status
-
-        if local_valve_device:
-            # (A) Check if fill_valve or drain_valve is assigned locally:
-            local_assignments = False
-
-            if fill_mode == "local" and fill_id.isdigit():
-                local_assignments = True
-                st = get_valve_status(int(fill_id))
-                local_valve_map[fill_label] = st or "off"
-
-            if drain_mode == "local" and drain_id.isdigit():
-                local_assignments = True
-                st = get_valve_status(int(drain_id))
-                local_valve_map[drain_label] = st or "off"
-
-            # (B) If no local fill/drain assignment, broadcast *all* 8 channels
-            if not local_assignments:
-                label_dict = settings.get("valve_labels", {})
-                for i in range(1, 9):
-                    key = str(i)
-                    label = label_dict.get(key, f"Valve {key}")
-                    st = get_valve_status(i)
-                    local_valve_map[label] = st or "off"
-
-        # -----------------------------------------------------------
-        #  4) Gather any remote valve statuses (because fill/drain could be remote)
-        # -----------------------------------------------------------
-        remote_valve_map = {}
-        for ip_addr in [fill_ip, drain_ip]:
-            if ip_addr:
-                remote_data   = get_cached_remote_states(ip_addr)
-                valve_info    = remote_data.get("valve_info", {})
-                r_valves      = valve_info.get("valve_relays", {})
-                # Merge them into remote_valve_map by label
-                for lbl, state_dict in r_valves.items():
-                    remote_valve_map[lbl] = state_dict.get("status", "off")
-
-        # -----------------------------------------------------------
-        #  5) Build final valve_relays: fill + drain if assigned, OR all 8 if no local assignment
-        # -----------------------------------------------------------
-        valve_relays = {}
-
-        # Fill
-        if fill_mode == "local" and fill_label in local_valve_map:
-            valve_relays[fill_label] = {"status": local_valve_map[fill_label]}
-        elif fill_mode == "remote" and fill_label:
-            st = remote_valve_map.get(fill_label, "off")
-            valve_relays[fill_label] = {"status": st}
-
-        # Drain
-        if drain_mode == "local" and drain_label in local_valve_map:
-            valve_relays[drain_label] = {"status": local_valve_map[drain_label]}
-        elif drain_mode == "remote" and drain_label:
-            st = remote_valve_map.get(drain_label, "off")
-            valve_relays[drain_label] = {"status": st}
-
-        # (Optional) Also include enumerated valves if no local assignment:
-        if local_valve_device:
-            for lbl, st in local_valve_map.items():
-                if lbl not in valve_relays:
-                    valve_relays[lbl] = {"status": st}
-
-        # Build the final valve_info
-        valve_info = {
-            "fill_valve_ip":    fill_ip,
-            "fill_valve":       fill_id,
-            "fill_valve_label": fill_label,
-            "drain_valve_ip":   drain_ip,
-            "drain_valve":      drain_id,
-            "drain_valve_label": drain_label,
-            "valve_relays":     valve_relays
-        }
-
-        # -----------------------------------------------------------
-        #  6) ADD: Water level sensors
-        # -----------------------------------------------------------
-        from services.water_level_service import get_water_level_status
-        water_level_info = get_water_level_status()  # <--- from water_level_service.py
 
         # -----------------------------------------------------------
         #  7) Build final payload
@@ -348,9 +245,6 @@ def emit_status_update(force_emit=False):
         status_payload = {
             "settings":     settings,
             "current_ph":   get_latest_ph_reading(),
-            "current_ec":   get_latest_ec_reading(),
-            "valve_info":   valve_info,
-            "water_level":  water_level_info,  # <--- RE-ADDED LINE
             # ... any additional fields ...
         }
 
