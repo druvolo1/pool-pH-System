@@ -173,31 +173,43 @@ def reset_settings():
 
 @settings_blueprint.route('/usb_devices', methods=['GET'])
 def list_usb_devices():
-    """List local USB devices, remove invalid assignments, emit status."""
-    devices = []
-    try:
-        print("Executing command: ls /dev/serial/by-path")
-        result = subprocess.check_output("ls /dev/serial/by-path", shell=True).decode().splitlines()
-        devices = [{"device": f"/dev/serial/by-path/{dev}"} for dev in result]
-        print("USB devices found:", devices)
-    except subprocess.CalledProcessError as e:
-        print(f"Error listing USB devices: {e}")
-        devices = []
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        devices = []
+    """
+    Return a list of *all* serial devices the Pi can see and clear any
+    USB-role assignments that are no longer present.
 
+    We enumerate four common patterns:
+      • /dev/serial/by-path/*
+      • /dev/serial/by-id/*
+      • /dev/ttyUSB*
+      • /dev/ttyACM*
+    """
+    import glob
+
+    # ---- gather every matching path -------------------------------------------------
+    patterns = [
+        "/dev/serial/by-path/*",
+        "/dev/serial/by-id/*",
+        "/dev/ttyUSB*",
+        "/dev/ttyACM*",
+    ]
+    paths: list[str] = []
+    for pattern in patterns:
+        paths.extend(glob.glob(pattern))
+
+    devices = [{"device": p} for p in sorted(paths)]
+
+    # ---- ensure settings['usb_roles'] exists and purge stale assignments ------------
     settings = load_settings()
-    usb_roles = settings.get("usb_roles", {})
+    usb_roles = settings.setdefault("usb_roles", {"ph_probe": None, "relay": None})
+
     connected_paths = [d["device"] for d in devices]
     modified = False
-    for role, assigned_device in list(usb_roles.items()):
-        if assigned_device and assigned_device not in connected_paths:
+    for role, assigned in list(usb_roles.items()):
+        if assigned and assigned not in connected_paths:
             usb_roles[role] = None
             modified = True
 
     if modified:
-        settings["usb_roles"] = usb_roles
         save_settings(settings)
 
     emit_status_update()
@@ -216,6 +228,7 @@ def assign_usb_device():
         return jsonify({"status": "failure", "error": "Invalid role"}), 400
 
     settings = load_settings()
+    settings.setdefault("usb_roles", {"ph_probe": None, "relay": None})
     old_device = settings.get("usb_roles", {}).get(role)
 
     # Clear or set
