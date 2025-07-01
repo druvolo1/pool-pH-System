@@ -14,7 +14,6 @@ from utils.network_utils import standardize_host_ip, resolve_mdns
 from services.ph_service import get_latest_ph_reading
 from utils.settings_utils import load_settings
 from services.auto_dose_state import auto_dose_state
-from services.plant_service import get_weeks_since_start
 from services.notification_service import get_all_notifications
 
 _socketio = None
