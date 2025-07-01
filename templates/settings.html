@@ -3,1032 +3,228 @@
 <head>
   <meta charset="UTF-8">
   <title>Settings</title>
+
+  <!-- styles + libs -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
 
   <style>
-    /* Example styling for a disabled section */
+    /* simple “grey-out when disabled” helper */
     .disabled-section {
-      opacity: 0.1;            /* Visually dims the section */
-      pointer-events: none;    /* Prevents clicks, hovers, focus, etc. */
+      opacity: .25;
+      pointer-events: none;
       position: relative;
     }
-    .disabled-section::after {
-      content: attr(data-disabled-title); /* Show custom tooltip text */
+    .disabled-section[data-tip]::after {
+      content: attr(data-tip);
       display: none;
-      background: #444;
-      color: #fff;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.85rem;
       position: absolute;
-      top: 5px;
-      left: 5px;
-      z-index: 9999;
+      top: 6px; left: 6px;
+      background:#333; color:#fff;
+      padding:4px 8px; border-radius:4px;
+      font-size:.8rem;
     }
-    .disabled-section:hover::after {
-      display: block;
-    }
+    .disabled-section:hover::after { display:block; }
 
-    .hidden {
-      display: none;
-    }
+    .hidden { display:none; }
   </style>
 </head>
-<body>
 
-  <!-- Navigation Menu -->
+<body>
+  <!-- ───────── nav ───────── -->
   <nav>
     <ul>
       <li><a href="/">Home</a></li>
       <li><a href="/dosage">Dosage</a></li>
-      <!--<li><a href="/calibration">Calibration</a></li>-->
-      <!--<li><a href="/configuration">Configuration</a></li>-->
       <li><a href="/settings">Settings</a></li>
-      <!--<li><a href="/valves">Valves</a></li>-->
     </ul>
   </nav>
 
   <main>
     <h1>Settings</h1>
-    <p class="subtitle">Configure your device, dosing, and sensors.</p>
+    <p class="subtitle">Configure your pool-pH controller.</p>
 
     <div class="settings-grid">
-
-      <!-- USB Device Assignment -->
+      <!-- ───────── USB assignment ───────── -->
       <div class="data-container">
-        <h2>Assign USB Devices</h2>
-      
-        <!-- pH Probe Form -->
-        <form id="ph-form">
-          <label for="ph-device">pH Probe:</label>
-          <select id="ph-device" name="ph-device">
-            <option value="">Select a device</option>
-          </select>
-          <button type="submit">Save pH Probe</button>
-        </form>
-        
-        <!-- Link that goes to Calibration - hidden by default and not blue -->
-        <a id="ph-calibration-link"
-           href="/calibration"
-           style="display: none;
-                  margin-bottom: 1em;
-                  text-decoration: underline;
-                  color: #ccc;  /* or whatever color you like */
-                  cursor: pointer;">
-           Click here for Calibration
-        </a>
-      
-        <!-- Dosing Relay Module Form -->
-        <form id="dosing-relay-form">
-          <label for="dosing-relay-device">Dosing Relay Module:</label>
-          <select id="dosing-relay-device" name="dosing-relay-device">
-            <option value="">Select a device</option>
-          </select>
-          <button type="submit">Save Dosing Relay Module</button>
-        </form>
-     
+        <h2>Assign USB Device</h2>
 
-      <!-- pH Min/Max Range -->
+        <label for="usb_device_select">Detected devices:</label>
+        <select id="usb_device_select"></select>
+
+        <button id="assign_ph_btn">Assign to&nbsp;pH&nbsp;Probe</button>
+        <button id="clear_ph_btn">Clear</button>
+
+        <p>Status: <span id="ph_usb_status">unknown</span></p>
+      </div>
+
+      <!-- ───────── pH range ───────── -->
       <div class="data-container" id="ph-range-container">
-        <h2>pH Min/Max Range</h2>
+        <h2>pH Min / Max</h2>
         <form id="ph-range-form">
-          <label for="ph-min">pH Range - Min:</label>
+          <label for="ph-min">Min:</label>
           <input type="number" id="ph-min" step="0.01">
-
-          <label for="ph-max">pH Range - Max:</label>
+          <label for="ph-max">Max:</label>
           <input type="number" id="ph-max" step="0.01">
-
-          <button type="submit">Save pH Range</button>
+          <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- General Settings (for Dosing) -->
+      <!-- ───────── general dosing ───────── -->
       <div class="data-container" id="general-settings-container">
-        <h2>General Settings</h2>
+        <h2>General Dosing</h2>
         <form id="general-settings-form">
-          <label for="ph-target">pH Target:</label>
+          <label for="ph-target">pH&nbsp;Target:</label>
           <input type="number" id="ph-target" step="0.01">
 
-          <label for="max-dosing">Max Dosing Amount (ml):</label>
+          <label for="max-dosing">Max Dose (ml):</label>
           <input type="number" id="max-dosing" step="1">
 
-          <label for="dosing-interval">Dosing Interval (hours):</label>
-          <input type="number" id="dosing-interval" step=".0001">
+          <label for="dosing-interval">Interval (hr):</label>
+          <input type="number" id="dosing-interval" step="0.01">
 
-          <label for="system-volume">System Volume (gallons):</label>
-          <input type="number" id="system-volume" step=".1">
+          <label for="system-volume">Pool Volume (gal):</label>
+          <input type="number" id="system-volume" step="0.1">
 
-          <label for="auto-dosing">Auto-Dosing Enabled:</label>
-          <input type="checkbox" id="auto-dosing">
+          <label>
+            <input type="checkbox" id="auto-dosing">
+            Auto-dosing enabled
+          </label>
 
-          <button type="submit" id="general-save-btn">Save General Settings</button>
+          <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- Dosage Strength -->
+      <!-- ───────── dosage strength ───────── -->
       <div class="data-container" id="dosage-strength-container">
         <h2>Dosage Strength</h2>
         <form id="dosage-strength-form">
-          <label for="ph-up-strength">pH Up Dosage Strength (ml per pH point):</label>
+          <label for="ph-up-strength">pH-Up (ml / ΔpH):</label>
           <input type="number" id="ph-up-strength" step="0.01">
 
-          <label for="ph-down-strength">pH Down Dosage Strength (ml per pH point):</label>
+          <label for="ph-down-strength">pH-Down:</label>
           <input type="number" id="ph-down-strength" step="0.01">
 
-          <button type="submit" id="dosage-save-btn">Save Dosage Strength</button>
+          <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- Pump Calibration -->
+      <!-- ───────── pump calibration ───────── -->
       <div class="data-container" id="pump-calibration-container">
         <h2>Pump Calibration</h2>
         <form id="pump-calibration-form">
-          <label for="pump1-calibration">pH Up Pump Calibration (seconds per ml):</label>
+          <label for="pump1-calibration">pH-Up (sec/ml):</label>
           <input type="number" id="pump1-calibration" step="0.01"><br><br>
 
-          <label for="pump2-calibration">pH Down Pump Calibration (seconds per ml):</label>
+          <label for="pump2-calibration">pH-Down:</label>
           <input type="number" id="pump2-calibration" step="0.01"><br><br>
 
-          <button type="submit" id="pump-calibration-save-btn">Save Pump Calibration</button>
+          <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- Relay Port Assignments (for Dosing) -->
+      <!-- ───────── relay ports ───────── -->
       <div class="data-container" id="relay-port-container">
-        <h2>Dosing Relay Port Assignments</h2>
+        <h2>Relay Port Mapping</h2>
         <form id="relay-port-form">
-          <label for="ph-up-relay-port">pH Up Relay Port:</label>
+          <label for="ph-up-relay-port">pH-Up relay:</label>
           <select id="ph-up-relay-port">
             <option value="1">Relay 1</option>
             <option value="2">Relay 2</option>
-          </select>
-          <br><br>
+          </select><br><br>
 
-          <label for="ph-down-relay-port">pH Down Relay Port:</label>
+          <label for="ph-down-relay-port">pH-Down:</label>
           <select id="ph-down-relay-port">
             <option value="1">Relay 1</option>
             <option value="2">Relay 2</option>
-          </select>
-          <br><br>
+          </select><br><br>
 
-          <button type="submit" id="relay-port-save-btn">Save Relay Port Assignments</button>
+          <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- System Info Section -->
-      <div class="data-container" id="system-info-container">
+      <!-- ───────── system info ───────── -->
+      <div class="data-container">
         <h2>System Info</h2>
         <form id="system-info-form">
-          <label for="system-name">System Name:</label>
-          <input type="text" id="system-name"><br><br>
-          <button type="submit">Save System Info</button>
+          <label for="system-name">Controller name:</label>
+          <input type="text" id="system-name">
+          <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- Notifications Section -->
+      <!-- ───────── notifications ───────── -->
       <div class="data-container" id="notifications-container">
         <h2>Notifications</h2>
 
-        <!-- ===================== Discord Settings ====================== -->
-        <h3>Discord Settings</h3>
+        <!-- Discord -->
+        <h3>Discord</h3>
         <form id="discord-form">
-          <div>
-            <label for="discord-enabled">Enable Discord Notifications:</label>
+          <label>
             <input type="checkbox" id="discord-enabled">
-          </div>
-          <br>
-          <div>
-            <label for="discord-webhook-url">Discord Webhook URL:</label>
-            <input type="text" id="discord-webhook-url" style="width: 300px;">
-          </div>
-          <br>
-          <button type="submit">Save Discord Settings</button>
+            Enable Discord
+          </label><br><br>
+          <label for="discord-webhook-url">Webhook URL:</label>
+          <input type="text" id="discord-webhook-url" style="width:300px">
+          <button type="submit">Save</button>
         </form>
+        <p>
+          Test message: <input type="text" id="discord-test-message" style="width:260px">
+          <button id="discord-test-send-btn">Send</button>
+        </p>
+        <div id="discord-test-result" style="margin-top:6px;font-size:.9rem;"></div>
 
         <hr>
-        <h4>Test Discord Notification</h4>
-        <label for="discord-test-message">Test Message:</label>
-        <input type="text" id="discord-test-message" style="width: 280px;">
-        <button id="discord-test-send-btn">Send Test</button>
-        <div id="discord-test-result" style="margin-top:8px; color: #e0e0e0;"></div>
 
-        <hr>
-
-        <!-- ===================== Telegram Settings ====================== -->
-        <h3>Telegram Settings</h3>
+        <!-- Telegram -->
+        <h3>Telegram</h3>
         <form id="telegram-form">
-          <div>
-            <label for="telegram-enabled">Enable Telegram Notifications:</label>
+          <label>
             <input type="checkbox" id="telegram-enabled">
-          </div>
-          <br>
-          <div>
-            <label for="telegram-bot-token">Telegram Bot Token:</label>
-            <input type="text" id="telegram-bot-token" style="width: 300px;">
-          </div>
-          <br>
-          <div>
-            <label for="telegram-chat-id">Telegram Chat ID:</label>
-            <input type="text" id="telegram-chat-id" style="width: 300px;">
-          </div>
-          <br>
-          <button type="submit">Save Telegram Settings</button>
+            Enable Telegram
+          </label><br><br>
+          <label for="telegram-bot-token">Bot&nbsp;Token:</label>
+          <input type="text" id="telegram-bot-token" style="width:300px"><br><br>
+          <label for="telegram-chat-id">Chat&nbsp;ID:</label>
+          <input type="text" id="telegram-chat-id" style="width:300px">
+          <button type="submit">Save</button>
         </form>
-
-        <hr>
-        <h4>Test Telegram Notification</h4>
-        <label for="telegram-test-message">Test Message:</label>
-        <input type="text" id="telegram-test-message" style="width: 280px;">
-        <button id="telegram-test-send-btn">Send Test</button>
-        <div id="telegram-test-result" style="margin-top:8px; color: #e0e0e0;"></div>
-
+        <p>
+          Test message: <input type="text" id="telegram-test-message" style="width:260px">
+          <button id="telegram-test-send-btn">Send</button>
+        </p>
+        <div id="telegram-test-result" style="margin-top:6px;font-size:.9rem;"></div>
       </div>
 
-
-      <!-- Code Update / Restart Section -->
+      <!-- ───────── code update / restart ───────── -->
       <div class="data-container">
         <h2>Code Update</h2>
+        <p>Current version: <span id="program-version"></span></p>
 
-        <p>Current Version: <span id="program-version"></span></p>
+        <button id="update-only-btn">Update Code (no restart)</button>
+        <div id="update-only-status"></div><br>
 
-        <p>Update code (git pull + pip install) without restarting:</p>
-        <button id="update-only-btn">Update Code (No Restart)</button>
-        <div id="update-only-status"></div>
-
-        <p>Restart service (pick up new code if any):</p>
         <button id="restart-service-btn">Restart Service</button>
         <div id="restart-status"></div>
       </div>
 
-      <!-- Import / Export Settings Section -->
+      <!-- ───────── import / export ───────── -->
       <div class="data-container">
         <h2>Import / Export Settings</h2>
-        
-        <!-- Export button -->
-        <p>Download a copy of the current settings.json:</p>
-        <button id="export-btn">Export Settings</button>
 
+        <button id="export-btn">Export current settings</button>
         <hr>
-
-        <!-- Import form -->
-        <p>Upload a new settings.json to replace the existing settings:</p>
         <form id="import-form">
           <input type="file" id="import-file" accept=".json">
-          <button type="submit">Import Settings</button>
+          <button type="submit">Import</button>
         </form>
-
         <div id="import-status"></div>
       </div>
-
-
     </div>
   </main>
 
-  <script>
-    /***************************************************************/
-    /**   retrieveValvesFromIP - existing remote IP approach      **/
-    /***************************************************************/
-    function retrieveValvesFromIP(ipInput, selectElementId) {
-      console.log("[retrieveValvesFromIP] Called with ipInput =", ipInput, "and selectElementId =", selectElementId);
-  
-      return new Promise((resolve, reject) => {
-        if (!ipInput) {
-          console.warn("[retrieveValvesFromIP] No IP provided, rejecting.");
-          return reject(new Error("No IP address provided"));
-        }
-  
-        let [host, port] = ipInput.split(":");
-        port = port || "8000";
-  
-        const url = `http://${host}:${port}/api/valve_relay/all_status`;
-        console.log("[retrieveValvesFromIP] Fetching URL:", url);
-  
-        fetch(url)
-          .then(res => {
-            if (!res.ok) {
-              throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            return res.json();
-          })
-          .then(data => {
-            if (data.status !== "success") {
-              throw new Error(data.error || "API returned failure");
-            }
-  
-            const valveMap = data.valves || {};
-            console.log("[retrieveValvesFromIP] valveMap:", valveMap);
-  
-            const sel = document.getElementById(selectElementId);
-            if (!sel) {
-              console.warn("[retrieveValvesFromIP] Could not find <select> with id =", selectElementId);
-              return resolve([]);
-            }
-  
-            sel.innerHTML = '<option value="">Select Valve</option>';
-            Object.keys(valveMap).forEach(valveId => {
-              const info = valveMap[valveId];
-              const label = info.label || `Valve ${valveId}`;
-              const option = new Option(label, valveId);
-              sel.add(option);
-            });
-  
-            resolve(Object.keys(valveMap));
-          })
-          .catch(err => {
-            console.error("[retrieveValvesFromIP] Caught error:", err);
-            reject(err);
-          });
-      });
-    }
-  
-    /***************************************************************/
-    /**   retrieveLocalValves - new local USB approach            **/
-    /***************************************************************/
-    function retrieveLocalValves(selectElementId) {
-      return new Promise((resolve, reject) => {
-        const url = "/api/valve_relay/all_status"; 
-        console.log("[retrieveLocalValves] Fetching local valves:", url);
-  
-        fetch(url)
-          .then(res => {
-            if (!res.ok) {
-              throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            return res.json();
-          })
-          .then(data => {
-            if (data.status !== "success") {
-              throw new Error(data.error || "API returned failure");
-            }
-  
-            const valveMap = data.valves || {};
-            console.log("[retrieveLocalValves] valveMap:", valveMap);
-  
-            const sel = document.getElementById(selectElementId);
-            if (!sel) {
-              console.warn("[retrieveLocalValves] Could not find <select>", selectElementId);
-              return resolve([]);
-            }
-  
-            sel.innerHTML = '<option value="">Select Valve</option>';
-            Object.keys(valveMap).forEach(valveId => {
-              const info = valveMap[valveId];
-              const label = info.label || `Valve ${valveId}`;
-              const option = new Option(label, valveId);
-              sel.add(option);
-            });
-  
-            resolve(Object.keys(valveMap));
-          })
-          .catch(err => {
-            console.error("[retrieveLocalValves] Error:", err);
-            reject(err);
-          });
-      });
-    }
-  
-    /***************************************************************/
-    /**    handleFillValveModeChange                              **/
-    /***************************************************************/
-    function handleFillValveModeChange() {
-      const mode = document.getElementById('fill-valve-mode').value;
-      const ipSection = document.getElementById('fill-valve-ip-section');
-      const fillValveSelect = document.getElementById('fill-valve');
-  
-      if (mode === 'local') {
-        // Hide IP input
-        ipSection.classList.add('hidden');
-        // Populate from local
-        retrieveLocalValves('fill-valve')
-          .then(valves => console.log("Local fill valves retrieved:", valves))
-          .catch(err => console.error("Error retrieving local fill valves:", err));
-      } else {
-        // Show IP input
-        ipSection.classList.remove('hidden');
-        // Clear out the dropdown
-        fillValveSelect.innerHTML = '<option value="">Select Fill Valve</option>';
-      }
-    }
-  
-    /***************************************************************/
-    /**    handleDrainValveModeChange                             **/
-    /***************************************************************/
-    function handleDrainValveModeChange() {
-      const mode = document.getElementById('drain-valve-mode').value;
-      const ipSection = document.getElementById('drain-valve-ip-section');
-      const drainValveSelect = document.getElementById('drain-valve');
-  
-      if (mode === 'local') {
-        ipSection.classList.add('hidden');
-        retrieveLocalValves('drain-valve')
-          .then(vals => console.log("Local drain valves retrieved:", vals))
-          .catch(err => console.error("Error retrieving local drain valves:", err));
-      } else {
-        ipSection.classList.remove('hidden');
-        drainValveSelect.innerHTML = '<option value="">Select Drain Valve</option>';
-      }
-    }
-  
-    /***************************************************************/
-    /**  Document Ready                                           **/
-    /***************************************************************/
-    document.addEventListener('DOMContentLoaded', () => {
-      // Immediately fetch & populate USB devices, etc.
-      fetchUsbDevices();
-  
-      // Fill/Drain mode toggles
-      document.getElementById('fill-valve-mode').addEventListener('change', handleFillValveModeChange);
-      document.getElementById('drain-valve-mode').addEventListener('change', handleDrainValveModeChange);
-  
-      // On page load, run them once
-      handleFillValveModeChange();
-      handleDrainValveModeChange();
-    });
-  
-    // Handle "Retrieve" clicks for fill/drain
-    document.getElementById('retrieve-fill-valves').addEventListener('click', () => {
-      const fillMode   = document.getElementById('fill-valve-mode').value; // "local" or "remote"
-      if (fillMode === 'local') {
-        retrieveLocalValves('fill-valve')
-          .then(valves => console.log("Local fill valves retrieved:", valves))
-          .catch(err => console.error("Error retrieving local fill valves:", err));
-      } else {
-        const fillIP = document.getElementById('fill-valve-ip').value.trim();
-        retrieveValvesFromIP(fillIP, 'fill-valve')
-          .then(valves => console.log("Remote fill valves retrieved:", valves))
-          .catch(err => console.error("Error retrieving remote fill valves:", err));
-      }
-    });
-  
-    document.getElementById('retrieve-drain-valves').addEventListener('click', () => {
-      const drainMode = document.getElementById('drain-valve-mode').value; // "local" or "remote"
-      if (drainMode === 'local') {
-        retrieveLocalValves('drain-valve')
-          .then(vals => console.log("Local drain valves retrieved:", vals))
-          .catch(err => console.error("Error retrieving local drain valves:", err));
-      } else {
-        const drainIP = document.getElementById('drain-valve-ip').value.trim();
-        retrieveValvesFromIP(drainIP, 'drain-valve')
-          .then(vals => console.log("Remote drain valves retrieved:", vals))
-          .catch(err => console.error("Error retrieving remote drain valves:", err));
-      }
-    });
-  
-    /***************************************************************/
-    /**      fetchUsbDevices & other existing code below...       **/
-    /***************************************************************/
-    function updateWeeksSinceStart(startDateStr) {
-      const weeksSpan = document.getElementById('weeks-since-start');
-      if (!startDateStr) {
-        weeksSpan.textContent = '0';
-        return;
-      }
-      const startDate = new Date(startDateStr);
-      if (isNaN(startDate)) {
-        weeksSpan.textContent = '0';
-        return;
-      }
-      const now = new Date();
-      const diffMs = now - startDate;
-      if (diffMs < 0) {
-        weeksSpan.textContent = '0';
-        return;
-      }
-      const weeks = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 7));
-      weeksSpan.textContent = weeks.toString();
-    }
-  
-    function fetchUsbDevices() { 
-      console.log('Rescanning USB devices...');
-      Promise.all([
-        fetch("/api/settings/usb_devices").then(r => r.json()),
-        fetch("/api/settings/").then(r => r.json())
-      ])
-      .then(([devices, settings]) => {
-        console.log('Devices:', devices);
-        console.log('Settings:', settings);
-
-        // For each role, we'll re-populate the dropdown
-        const phDevSelect     = document.getElementById('ph-device');
-        const dosingDevSelect = document.getElementById('dosing-relay-device');
-
-        const assignedPh      = settings.usb_roles?.ph_probe    || "";
-        const assignedDosing  = settings.usb_roles?.relay       || "";
-
-        phDevSelect.innerHTML     = '<option value="">Select a device</option>';
-        dosingDevSelect.innerHTML = '<option value="">Select a device</option>';
-
-        devices.forEach(dev => {
-          // pH Option
-          const phOption = document.createElement('option');
-          phOption.value = dev.device;
-          phOption.textContent = dev.device;
-          if (phOption.value === assignedPh) {
-            phOption.selected = true;
-          }
-          phDevSelect.appendChild(phOption);
-
-          // Dosing Relay
-          const dosingOption = document.createElement('option');
-          dosingOption.value = dev.device;
-          dosingOption.textContent = dev.device;
-          if (dosingOption.value === assignedDosing) {
-            dosingOption.selected = true;
-          }
-          dosingDevSelect.appendChild(dosingOption);
-        });
-
-        // 1) If NO pH probe => disable pH range
-        const isPhProbeAssigned = Boolean(assignedPh);
-        const phRangeContainer  = document.getElementById('ph-range-container');
-        if (!isPhProbeAssigned) {
-          phRangeContainer.classList.add('disabled-section');
-          phRangeContainer.setAttribute('data-disabled-title', 'Assign pH probe');
-        } else {
-          phRangeContainer.classList.remove('disabled-section');
-          phRangeContainer.removeAttribute('data-disabled-title');
-        }
-
-        // 2) If NO pH OR NO dosing => disable the big 4
-        const isDosingRelayAssigned = Boolean(assignedDosing);
-        const mustDisableBig4 = (!isPhProbeAssigned || !isDosingRelayAssigned);
-
-        const generalSettings  = document.getElementById('general-settings-container');
-        const dosageStrength   = document.getElementById('dosage-strength-container');
-        const pumpCalibration  = document.getElementById('pump-calibration-container');
-        const relayPortSection = document.getElementById('relay-port-container');
-
-        if (mustDisableBig4) {
-          generalSettings.classList.add('disabled-section');
-          generalSettings.setAttribute('data-disabled-title', 'Assign pH probe and dosing relay');
-
-          dosageStrength.classList.add('disabled-section');
-          dosageStrength.setAttribute('data-disabled-title', 'Assign pH probe and dosing relay');
-
-          pumpCalibration.classList.add('disabled-section');
-          pumpCalibration.setAttribute('data-disabled-title', 'Assign pH probe and dosing relay');
-
-          relayPortSection.classList.add('disabled-section');
-          relayPortSection.setAttribute('data-disabled-title', 'Assign pH probe and dosing relay');
-        } else {
-          generalSettings.classList.remove('disabled-section');
-          generalSettings.removeAttribute('data-disabled-title');
-
-          dosageStrength.classList.remove('disabled-section');
-          dosageStrength.removeAttribute('data-disabled-title');
-
-          pumpCalibration.classList.remove('disabled-section');
-          pumpCalibration.removeAttribute('data-disabled-title');
-
-          relayPortSection.classList.remove('disabled-section');
-          relayPortSection.removeAttribute('data-disabled-title');
-        }
-
-        // Show/hide the Dosing Relay warning
-        const relayWarning = document.getElementById('relay-warning');
-        relayWarning.style.display = isDosingRelayAssigned ? 'none' : 'block';
-
-        // === ADDED LINES: Show/hide the "pH Calibration" link & "Manage Valves" link ===
-        const phCalibrationLink = document.getElementById('ph-calibration-link');
-        phCalibrationLink.style.display = isPhProbeAssigned ? 'inline-block' : 'none';
-
-        const isValveRelayAssigned = Boolean(assignedValve);
-        const valveRelayLink = document.getElementById('valve-relay-link');
-        valveRelayLink.style.display = isValveRelayAssigned ? 'inline-block' : 'none';
-
-        // pH Range
-        document.getElementById('ph-min').value = settings.ph_range?.min || '';
-        document.getElementById('ph-max').value = settings.ph_range?.max || '';
-
-        // General (dosing) settings
-        document.getElementById('ph-target').value       = settings.ph_target         || '5.8';
-        document.getElementById('max-dosing').value      = settings.max_dosing_amount || '0';
-        document.getElementById('dosing-interval').value = settings.dosing_interval   || '1';
-        document.getElementById('system-volume').value   = settings.system_volume     || '';
-        document.getElementById('auto-dosing').checked   = !!settings.auto_dosing_enabled;
-
-        // System Info
-        const plantInfo = settings.plant_info || {};
-        document.getElementById('system-name').value      = settings.system_name || '';
-        document.getElementById('plant-name').value       = plantInfo.name       || '';
-        document.getElementById('plant-start-date').value = plantInfo.start_date || '';
-        updateWeeksSinceStart(plantInfo.start_date);
-
-        // Dosage Strength
-        document.getElementById('ph-up-strength').value   = settings.dosage_strength?.ph_up   || '';
-        document.getElementById('ph-down-strength').value = settings.dosage_strength?.ph_down || '';
-
-        // Pump Calibration
-        document.getElementById('pump1-calibration').value = settings.pump_calibration?.pump1 || '';
-        document.getElementById('pump2-calibration').value = settings.pump_calibration?.pump2 || '';
-
-        // Relay Ports
-        const relayPorts = settings.relay_ports || { ph_up: 1, ph_down: 2 };
-        document.getElementById('ph-up-relay-port').value   = relayPorts.ph_up;
-        document.getElementById('ph-down-relay-port').value = relayPorts.ph_down;
-
-        // Water Level Sensors
-        const sensors = settings.water_level_sensors || {
-          sensor1: { label: "Full", pin: 22 },
-          sensor2: { label: "3 Gal", pin: 23 },
-          sensor3: { label: "Empty", pin: 24 }
-        };
-        document.getElementById('sensor1-label').value = sensors.sensor1.label;
-        document.getElementById('sensor1-pin').value   = sensors.sensor1.pin;
-        document.getElementById('sensor2-label').value = sensors.sensor2.label;
-        document.getElementById('sensor2-pin').value   = sensors.sensor2.pin;
-        document.getElementById('sensor3-label').value = sensors.sensor3.label;
-        document.getElementById('sensor3-pin').value   = sensors.sensor3.pin;
-
-        // Populate the Fill/Drain Sensor dropdowns
-        const fillSensorSelect  = document.getElementById('fill-sensor');
-        const drainSensorSelect = document.getElementById('drain-sensor');
-        fillSensorSelect.innerHTML  = '<option value="">Select Fill Sensor</option>';
-        drainSensorSelect.innerHTML = '<option value="">Select Drain Sensor</option>';
-
-        Object.keys(sensors).forEach(sensorKey => {
-          const sensorLabel = sensors[sensorKey].label || sensorKey;
-          fillSensorSelect.add(new Option(sensorLabel, sensorKey));
-          drainSensorSelect.add(new Option(sensorLabel, sensorKey));
-        });
-
-        fillSensorSelect.value  = settings.fill_sensor  || '';
-        drainSensorSelect.value = settings.drain_sensor || '';
-
-        /*************************************************************
-         *    Re-populate Fill/Drain Valve info
-         *************************************************************/
-        // 1) Set the local/remote mode from settings
-        document.getElementById('fill-valve-mode').value  = settings.fill_valve_mode  || 'local';
-        document.getElementById('drain-valve-mode').value = settings.drain_valve_mode || 'local';
-
-        // 2) Update the IP text fields from settings
-        //    so that if the mode is remote, the user sees the old IP.
-        document.getElementById('fill-valve-ip').value  = settings.fill_valve_ip  || "";
-        document.getElementById('drain-valve-ip').value = settings.drain_valve_ip || "";
-
-        // 3) Immediately call the mode-change handlers so the UI toggles
-        handleFillValveModeChange();
-        handleDrainValveModeChange();
-
-        // 4) If fill mode is local => retrieveLocalValves(...).value = fill_valve
-        //    If fill mode is remote => retrieveValvesFromIP(fill_valve_ip, "fill-valve").value = fill_valve
-        if (settings.fill_valve_mode === 'local') {
-          retrieveLocalValves('fill-valve').then(() => {
-            document.getElementById('fill-valve').value = settings.fill_valve || '';
-          });
-        } else {
-          if (settings.fill_valve_ip) {
-            retrieveValvesFromIP(settings.fill_valve_ip, 'fill-valve').then(() => {
-              document.getElementById('fill-valve').value = settings.fill_valve || '';
-            });
-          } else {
-            document.getElementById('fill-valve').innerHTML = '<option value="">Select Fill Valve</option>';
-          }
-        }
-
-        // 5) Same approach for the drain side:
-        if (settings.drain_valve_mode === 'local') {
-          retrieveLocalValves('drain-valve').then(() => {
-            document.getElementById('drain-valve').value = settings.drain_valve || '';
-          });
-        } else {
-          if (settings.drain_valve_ip) {
-            retrieveValvesFromIP(settings.drain_valve_ip, 'drain-valve').then(() => {
-              document.getElementById('drain-valve').value = settings.drain_valve || '';
-            });
-          } else {
-            document.getElementById('drain-valve').innerHTML = '<option value="">Select Drain Valve</option>';
-          }
-        }
-
-        // Additional plants
-        renderAdditionalPlants(settings.additional_plants || []);
-
-        // Program version
-        document.getElementById('program-version').textContent = settings.program_version || 'N/A';
-
-        // Render power outlets
-        renderPowerOutlets(settings.power_controls || []);
-
-        // Discord fields
-        document.getElementById('discord-enabled').checked = !!settings.discord_enabled;
-        document.getElementById('discord-webhook-url').value = settings.discord_webhook_url || '';
-
-        // Telegram fields (NEW)
-        document.getElementById('telegram-enabled').checked = !!settings.telegram_enabled;
-        document.getElementById('telegram-bot-token').value = settings.telegram_bot_token || '';
-        document.getElementById('telegram-chat-id').value = settings.telegram_chat_id || '';
-      })
-      .catch(err => console.error('Error scanning devices or fetching settings:', err));
-    }
-
-  
-    // USB assignment
-    function saveUsbAssignment(role, device) {
-      fetch("/api/settings/assign_usb", {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role, device })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.status === 'success') {
-          document.getElementById('status').textContent = `${role} assigned successfully.`;
-        } else {
-          document.getElementById('status').textContent = `Failed to assign ${role}: ${data.error}`;
-        }
-        fetchUsbDevices();
-      })
-      .catch(err => console.error(`Error assigning ${role}:`, err));
-    }
-  
-    // Save settings
-    function saveSettings(endpoint, payload) {
-      fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      .then(() => {
-        console.log('Settings saved successfully');
-        // Refresh everything
-        fetchUsbDevices();
-      })
-      .catch(error => console.error('Error saving settings:', error));
-    }
-  
-    // FORM SUBMISSIONS for pH, Dosing, etc.
-    document.getElementById('ph-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const dev = document.getElementById('ph-device').value;
-      saveUsbAssignment('ph_probe', dev);
-    });
-  
-    document.getElementById('dosing-relay-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const dev = document.getElementById('dosing-relay-device').value;
-      saveUsbAssignment('relay', dev);
-    });
-  
-    document.getElementById('valve-relay-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const dev = document.getElementById('valve-relay-device').value;
-      saveUsbAssignment('valve_relay', dev);
-    });
-    
-    // pH Range
-    document.getElementById('ph-range-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const minVal = parseFloat(document.getElementById('ph-min').value);
-      const maxVal = parseFloat(document.getElementById('ph-max').value);
-      const payload = {
-        ph_range: { min: minVal, max: maxVal }
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
-    // General (dosing) settings
-    document.getElementById('general-settings-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const payload = {
-        ph_target:         parseFloat(document.getElementById('ph-target').value),
-        max_dosing_amount: parseFloat(document.getElementById('max-dosing').value),
-        dosing_interval:   parseFloat(document.getElementById('dosing-interval').value),
-        system_volume:     parseFloat(document.getElementById('system-volume').value),
-        auto_dosing_enabled: document.getElementById('auto-dosing').checked
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
-    // Dosage Strength
-    document.getElementById('dosage-strength-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const phUp   = parseFloat(document.getElementById('ph-up-strength').value);
-      const phDown = parseFloat(document.getElementById('ph-down-strength').value);
-      const payload = {
-        dosage_strength: { ph_up: phUp, ph_down: phDown }
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
-    // Pump Calibration
-    document.getElementById('pump-calibration-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const payload = {
-        pump_calibration: {
-          pump1: parseFloat(document.getElementById('pump1-calibration').value),
-          pump2: parseFloat(document.getElementById('pump2-calibration').value)
-        }
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
-    // Relay Ports
-    document.getElementById('relay-port-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const phUpPort   = parseInt(document.getElementById('ph-up-relay-port').value, 10);
-      const phDownPort = parseInt(document.getElementById('ph-down-relay-port').value, 10);
-      const payload = {
-        relay_ports: {
-          ph_up: phUpPort,
-          ph_down: phDownPort
-        }
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
-    // System Info
-    document.getElementById('system-info-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const systemName = document.getElementById('system-name').value.trim();
-      const payload = {
-        system_name: systemName,
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
-    // Code Update (No Restart)
-    document.getElementById('update-only-btn').addEventListener('click', () => {
-      if (!confirm("Are you sure you want to run the software update?")) return;
-  
-      fetch("/api/system/pull_no_restart", { method: "POST" })
-        .then(res => res.json())
-        .then(data => {
-          console.log("Update-only response:", data);
-          const updateOnlyStatus = document.getElementById('update-only-status');
-  
-          if (data.status === "success") {
-            updateOnlyStatus.textContent = "Update-only successful.\n\n" + data.output;
-          } else {
-            updateOnlyStatus.textContent =
-              "Update-only failed:\n" + (data.error || "Unknown error") + "\n\n" + (data.output || "");
-          }
-        })
-        .catch(err => {
-          document.getElementById('update-only-status').textContent = "Fetch error: " + err;
-        });
-    });
-  
-    // Restart Service
-    document.getElementById('restart-service-btn').addEventListener('click', () => {
-      if (!confirm("Are you sure you want to restart the garden.service now?")) {
-        return;
-      }
-  
-      fetch("/api/system/restart", { method: "POST" })
-        .then(() => {
-          document.getElementById('restart-status').textContent =
-            "The program is restarting. Please wait...";
-          setTimeout(() => window.location.reload(), 10000);
-        })
-        .catch(() => {
-          document.getElementById('restart-status').textContent =
-            "Could not contact server. The program may be restarting...";
-          setTimeout(() => window.location.reload(), 10000);
-        });
-    });
-
-  
-    // Export
-    document.getElementById('export-btn').addEventListener('click', () => {
-      window.location.href = '/api/settings/export';
-    });
-  
-    // Import
-    document.getElementById('import-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const fileInput = document.getElementById('import-file');
-      if (!fileInput.files || fileInput.files.length === 0) {
-        alert("Please select a .json file first.");
-        return;
-      }
-  
-      const formData = new FormData();
-      formData.append('file', fileInput.files[0]);
-  
-      fetch('/api/settings/import', {
-        method: 'POST',
-        body: formData
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.status === 'success') {
-          document.getElementById('import-status').textContent =
-            "Settings file imported successfully. Restarting service...";
-          setTimeout(() => {
-            fetch("/api/system/restart", { method: "POST" })
-              .then(() => {
-                document.getElementById('import-status').textContent =
-                  "Service is restarting. Please wait...";
-                setTimeout(() => window.location.reload(), 5000);
-              })
-              .catch(() => {
-                document.getElementById('import-status').textContent =
-                  "Could not contact server, but it may be restarting anyway. Reloading...";
-                setTimeout(() => window.location.reload(), 5000);
-              });
-          }, 1000);
-        } else {
-          document.getElementById('import-status').textContent =
-            "Error importing settings: " + (data.error || 'Unknown error');
-        }
-      })
-      .catch(err => {
-        document.getElementById('import-status').textContent =
-          "Fetch error: " + err;
-      });
-    });
-
-    // ============ Discord Form + Test =============
-    document.getElementById('discord-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const enabled   = document.getElementById('discord-enabled').checked;
-      const webhook   = document.getElementById('discord-webhook-url').value.trim();
-      const payload = {
-        discord_enabled: enabled,
-        discord_webhook_url: webhook
-      };
-      saveSettings("/api/settings/", payload);
-    });
-
-    document.getElementById('discord-test-send-btn').addEventListener('click', () => {
-      const testMessage = document.getElementById('discord-test-message').value.trim();
-      if (!testMessage) {
-        alert("Please enter a test message to send to Discord.");
-        return;
-      }
-      // POST to /api/settings/test_discord
-      fetch("/api/settings/discord_message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test_message: testMessage })
-      })
-      .then(r => r.json())
-      .then(data => {
-        const resultDiv = document.getElementById('discord-test-result');
-        if (data.status === "success") {
-          resultDiv.style.color = "#7CFC00"; // greenish
-          resultDiv.textContent = `Success: ${data.info || 'Message sent!'}`;
-        } else {
-          resultDiv.style.color = "#FF4444";
-          resultDiv.textContent = `Failed: ${data.error || 'Unknown error'}`;
-        }
-      })
-      .catch(err => {
-        const resultDiv = document.getElementById('discord-test-result');
-        resultDiv.style.color = "#FF4444";
-        resultDiv.textContent = `Exception: ${err}`;
-      });
-    });
-
-    // ============ Telegram Form + Test =============
-    document.getElementById('telegram-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const enabled   = document.getElementById('telegram-enabled').checked;
-      const botToken  = document.getElementById('telegram-bot-token').value.trim();
-      const chatId    = document.getElementById('telegram-chat-id').value.trim(); // <-- read the chat_id
-      const payload = {
-        telegram_enabled: enabled,
-        telegram_bot_token: botToken,
-        telegram_chat_id: chatId           // <-- store the chat_id in settings
-      };
-      saveSettings("/api/settings/", payload);
-    });
-
-    document.getElementById('telegram-test-send-btn').addEventListener('click', () => {
-      const testMessage = document.getElementById('telegram-test-message').value.trim();
-      if (!testMessage) {
-        alert("Please enter a test message for Telegram.");
-        return;
-      }
-      // POST to /api/settings/test_telegram
-      fetch("/api/settings/telegram_message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ test_message: testMessage })
-      })
-      .then(r => r.json())
-      .then(data => {
-        const resultDiv = document.getElementById('telegram-test-result');
-        if (data.status === "success") {
-          resultDiv.style.color = "#7CFC00"; // greenish
-          resultDiv.textContent = `Success: ${data.info || 'Message sent!'}`;
-        } else {
-          resultDiv.style.color = "#FF4444";
-          resultDiv.textContent = `Failed: ${data.error || 'Unknown error'}`;
-        }
-      })
-      .catch(err => {
-        const resultDiv = document.getElementById('telegram-test-result');
-        resultDiv.style.color = "#FF4444";
-        resultDiv.textContent = `Exception: ${err}`;
-      });
-    });
-
-  </script>
-  
+  <!-- pool-pH script (clean, null-safe, no garden widgets) -->
+  <script src="{{ url_for('static', filename='settings.js') }}"></script>
 </body>
 </html>
