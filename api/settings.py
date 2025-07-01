@@ -188,12 +188,16 @@ def list_usb_devices():
         paths.extend(glob.glob(pattern))
 
     devices = [{"device": p} for p in sorted(paths)]
+    print("[USB DEBUG] devices list =", devices)
 
     # 2) drop assignments whose device has truly vanished
     settings = load_settings()
     usb_roles = settings.setdefault("usb_roles", {"ph_probe": None, "relay": None})
 
     connected_paths = [d["device"] for d in devices]
+    print("[USB DEBUG] connected_paths =", connected_paths)      # ← add
+    print("[USB DEBUG] usb_roles BEFORE pruning =", usb_roles)   # ← add
+    
     if any(assigned and assigned not in connected_paths for assigned in usb_roles.values()):
         for role, assigned in usb_roles.items():
             if assigned and assigned not in connected_paths:
