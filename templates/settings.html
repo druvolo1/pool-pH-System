@@ -31,21 +31,6 @@
       display: block;
     }
 
-    /* Optional: some minor styling for power-outlet cards */
-    .power-outlet-card {
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    .power-outlet-card h4 {
-      margin: 0 0 10px 0;
-    }
-    .tracked-valve-row {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 4px;
-      gap: 10px;
-    }
     .hidden {
       display: none;
     }
@@ -103,43 +88,7 @@
           </select>
           <button type="submit">Save Dosing Relay Module</button>
         </form>
-      
-        <!-- Valve Relay Module Form (no mode dropdown, purely local USB path) -->
-        <form id="valve-relay-form">
-          <label for="valve-relay-device">Valve Relay Module:</label>
-          <select id="valve-relay-device" name="valve-relay-device">
-            <option value="">Select a device</option>
-          </select>
-          <button type="submit" id="valve-relay-save-btn">Save Valve Relay Setting</button>
-        </form>
-        
-        <!-- Link that goes to Valves page - hidden by default and not blue -->
-        <a id="valve-relay-link"
-           href="/valves"
-           style="display: none;
-                  margin-top: 1em;
-                  text-decoration: underline;
-                  color: #ccc;  /* or whatever color you like */
-                  cursor: pointer;">
-           Click here to Manage Valves
-        </a>
-      
-        <!-- EC Meter Form -->
-        <form id="ec-meter-form">
-          <label for="ec-meter-device">EC Meter:</label>
-          <select id="ec-meter-device" name="ec-meter-device">
-            <option value="">Select a device</option>
-          </select>
-          <button type="submit">Save EC Meter</button>
-        </form>
-
-        <button id="rescan-usb" onclick="fetchUsbDevices()">Rescan USB Devices</button>
-        <div id="status"></div>
-
-        <div id="relay-warning" class="error-message" style="display: none;">
-          <strong>Dosing Relay module not assigned. Dosing-related settings are disabled.</strong>
-        </div>
-      </div>
+     
 
       <!-- pH Min/Max Range -->
       <div class="data-container" id="ph-range-container">
@@ -228,151 +177,15 @@
         </form>
       </div>
 
-      <!-- Water Valve Assignment -->
-      <div class="data-container">
-        <h2>Water Valve Assignment</h2>
-        <form id="water-valve-form">
-
-          <!-- Fill Valve -->
-          <h3>Fill Valve Assignment</h3>
-
-          <!-- Mode dropdown -->
-          <label for="fill-valve-mode">Fill Valve Mode:</label>
-          <select id="fill-valve-mode">
-            <option value="local">Local (USB)</option>
-            <option value="remote">Remote (IP)</option>
-          </select>
-
-          <br><br>
-
-          <!-- IP input section hidden if "local" -->
-          <div id="fill-valve-ip-section">
-            <label for="fill-valve-ip">Fill Valve IP:</label>
-            <input type="text" id="fill-valve-ip">
-            <button type="button" id="retrieve-fill-valves">Retrieve Fill Valves</button>
-          </div>
-
-          <br><br>
-          <label for="fill-valve">Fill Valve:</label>
-          <select id="fill-valve">
-            <option value="">Select Fill Valve</option>
-          </select>
-
-          <br><br>
-          <label for="fill-sensor">Fill Valve Sensor:</label>
-          <select id="fill-sensor">
-            <option value="">Select Fill Sensor</option>
-          </select>
-          <!-- ... then the rest of the fill logic ... -->
-
-          <!-- Drain Valve -->
-          <h3>Drain Valve Assignment</h3>
-
-          <label for="drain-valve-mode">Drain Valve Mode:</label>
-          <select id="drain-valve-mode">
-            <option value="local">Local (USB)</option>
-            <option value="remote">Remote (IP)</option>
-          </select>
-
-          <br><br>
-
-          <div id="drain-valve-ip-section">
-            <label for="drain-valve-ip">Drain Valve IP:</label>
-            <input type="text" id="drain-valve-ip">
-            <button type="button" id="retrieve-drain-valves">Retrieve Drain Valves</button>
-          </div>
-
-          <br><br>
-          <label for="drain-valve">Drain Valve:</label>
-          <select id="drain-valve">
-            <option value="">Select Drain Valve</option>
-          </select>
-
-          <br><br>
-          <label for="drain-sensor">Drain Valve Sensor:</label>
-          <select id="drain-sensor">
-            <option value="">Select Drain Sensor</option>
-          </select>
-
-          <hr>
-          <button type="submit">Save Valve Assignments</button>
-        </form>
-      </div>
-
       <!-- System Info Section -->
       <div class="data-container" id="system-info-container">
         <h2>System Info</h2>
         <form id="system-info-form">
           <label for="system-name">System Name:</label>
           <input type="text" id="system-name"><br><br>
-
-          <label for="plant-name">Plant Name:</label>
-          <input type="text" id="plant-name"><br><br>
-
-          <label for="plant-start-date">Plant Start Date:</label>
-          <input type="date" id="plant-start-date"><br><br>
-
-          <label>Weeks Since Start:</label>
-          <span id="weeks-since-start">0</span><br><br>
-
           <button type="submit">Save System Info</button>
         </form>
       </div>
-
-      <!-- Water Level Sensors -->
-      <div class="data-container">
-        <h2>Water Level Sensors</h2>
-        <form id="water-level-sensors-form">
-          <fieldset>
-            <legend>Sensor 1</legend>
-            <label>Label:</label>
-            <input type="text" id="sensor1-label">
-            <label>Pin:</label>
-            <input type="number" id="sensor1-pin">
-          </fieldset>
-
-          <fieldset>
-            <legend>Sensor 2</legend>
-            <label>Label:</label>
-            <input type="text" id="sensor2-label">
-            <label>Pin:</label>
-            <input type="number" id="sensor2-pin">
-          </fieldset>
-
-          <fieldset>
-            <legend>Sensor 3</legend>
-            <label>Label:</label>
-            <input type="text" id="sensor3-label">
-            <label>Pin:</label>
-            <input type="number" id="sensor3-pin">
-          </fieldset>
-
-          <button type="submit">Save Water Sensors</button>
-        </form>
-      </div>
-
-      <!-- Additional Plants Section -->
-      <div class="data-container">
-        <h2>Additional Plants</h2>
-        <div id="plants-list" style="margin-bottom: 10px;"></div>
-        <label for="new-plant-input">New IP / DNS:</label>
-        <input type="text" id="new-plant-input" placeholder="e.g. 192.168.1.45 or myplant.local">
-        <button type="button" id="add-plant-btn">+ Add</button>
-      </div>
-
-      <!-- POWER OUTLETS UI -->
-      <div class="data-container">
-        <h2>Power Outlets</h2>
-        <div id="power-outlets-list"></div>
-
-        <h3>Add New Outlet</h3>
-        <label for="new-outlet-ip">Outlet IP (Shelly IP):</label>
-        <input type="text" id="new-outlet-ip">
-        <label for="new-outlet-label">Label:</label>
-        <input type="text" id="new-outlet-label">
-        <button type="button" id="add-outlet-btn">+ Add Outlet</button>
-      </div>
-      <!-- END POWER OUTLETS UI -->
 
       <!-- Notifications Section -->
       <div class="data-container" id="notifications-container">
@@ -700,18 +513,12 @@
         // For each role, we'll re-populate the dropdown
         const phDevSelect     = document.getElementById('ph-device');
         const dosingDevSelect = document.getElementById('dosing-relay-device');
-        const valveDevSelect  = document.getElementById('valve-relay-device');
-        const ecMeterSelect   = document.getElementById('ec-meter-device'); // NEW
 
         const assignedPh      = settings.usb_roles?.ph_probe    || "";
         const assignedDosing  = settings.usb_roles?.relay       || "";
-        const assignedValve   = settings.usb_roles?.valve_relay || "";
-        const assignedEC      = settings.usb_roles?.ec_meter    || ""; // NEW
 
         phDevSelect.innerHTML     = '<option value="">Select a device</option>';
         dosingDevSelect.innerHTML = '<option value="">Select a device</option>';
-        valveDevSelect.innerHTML  = '<option value="">Select a device</option>';
-        ecMeterSelect.innerHTML   = '<option value="">Select a device</option>';
 
         devices.forEach(dev => {
           // pH Option
@@ -731,24 +538,6 @@
             dosingOption.selected = true;
           }
           dosingDevSelect.appendChild(dosingOption);
-
-          // Valve Relay
-          const valveOption = document.createElement('option');
-          valveOption.value = dev.device;
-          valveOption.textContent = dev.device;
-          if (valveOption.value === assignedValve) {
-            valveOption.selected = true;
-          }
-          valveDevSelect.appendChild(valveOption);
-
-          // EC Meter
-          const ecOption = document.createElement('option');
-          ecOption.value = dev.device;
-          ecOption.textContent = dev.device;
-          if (ecOption.value === assignedEC) {
-            ecOption.selected = true;
-          }
-          ecMeterSelect.appendChild(ecOption);
         });
 
         // 1) If NO pH probe => disable pH range
@@ -989,54 +778,7 @@
       const dev = document.getElementById('valve-relay-device').value;
       saveUsbAssignment('valve_relay', dev);
     });
-  
-    document.getElementById('ec-meter-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const dev = document.getElementById('ec-meter-device').value;
-      saveUsbAssignment('ec_meter', dev);
-    });
-  
-    // Water Valve IP/Valves
-    document.getElementById('water-valve-form').addEventListener('submit', e => {
-      e.preventDefault();
-  
-      const fillMode = document.getElementById('fill-valve-mode').value;
-      const drainMode= document.getElementById('drain-valve-mode').value;
-  
-      const fillValSelect = document.getElementById('fill-valve');
-      const fillValveId   = fillValSelect.value;
-      const fillValveLbl  = fillValSelect.options[fillValSelect.selectedIndex]?.text || "";
-  
-      const drainValSelect= document.getElementById('drain-valve');
-      const drainValveId  = drainValSelect.value;
-      const drainValveLbl = drainValSelect.options[drainValSelect.selectedIndex]?.text || "";
-  
-      const fillIp = (fillMode === 'local')
-        ? ""
-        : document.getElementById('fill-valve-ip').value.trim();
-  
-      const drainIp = (drainMode === 'local')
-        ? ""
-        : document.getElementById('drain-valve-ip').value.trim();
-  
-      const payload = {
-        // Save the selected modes:
-        fill_valve_mode:  fillMode,
-        drain_valve_mode: drainMode,
-  
-        fill_valve_ip:   fillIp,
-        fill_valve:      fillValveId,
-        fill_valve_label: fillValveLbl,
-        fill_sensor:     document.getElementById('fill-sensor').value,
-  
-        drain_valve_ip:   drainIp,
-        drain_valve:      drainValveId,
-        drain_valve_label: drainValveLbl,
-        drain_sensor:     document.getElementById('drain-sensor').value
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
+    
     // pH Range
     document.getElementById('ph-range-form').addEventListener('submit', e => {
       e.preventDefault();
@@ -1102,98 +844,11 @@
     document.getElementById('system-info-form').addEventListener('submit', e => {
       e.preventDefault();
       const systemName = document.getElementById('system-name').value.trim();
-      const plantName  = document.getElementById('plant-name').value.trim();
-      const startDate  = document.getElementById('plant-start-date').value;
       const payload = {
         system_name: systemName,
-        plant_info: {
-          name: plantName,
-          start_date: startDate
-        }
       };
       saveSettings("/api/settings/", payload);
     });
-  
-    document.getElementById('plant-start-date').addEventListener('change', e => {
-      updateWeeksSinceStart(e.target.value);
-    });
-  
-    // Water Level Sensors
-    document.getElementById('water-level-sensors-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const sensor1Label = document.getElementById('sensor1-label').value;
-      const sensor1Pin   = parseInt(document.getElementById('sensor1-pin').value, 10) || 22;
-      const sensor2Label = document.getElementById('sensor2-label').value;
-      const sensor2Pin   = parseInt(document.getElementById('sensor2-pin').value, 10) || 23;
-      const sensor3Label = document.getElementById('sensor3-label').value;
-      const sensor3Pin   = parseInt(document.getElementById('sensor3-pin').value, 10) || 24;
-  
-      const payload = {
-        water_level_sensors: {
-          sensor1: { label: sensor1Label, pin: sensor1Pin },
-          sensor2: { label: sensor2Label, pin: sensor2Pin },
-          sensor3: { label: sensor3Label, pin: sensor3Pin }
-        }
-      };
-      saveSettings("/api/settings/", payload);
-    });
-  
-    // Additional Plants
-    function renderAdditionalPlants(plantsArray) {
-      const container = document.getElementById('plants-list');
-      container.innerHTML = ""; // clear old content
-  
-      plantsArray.forEach(plant => {
-        const rowDiv = document.createElement('div');
-        rowDiv.style.display = "flex";
-        rowDiv.style.justifyContent = "space-between";
-        rowDiv.style.alignItems = "center";
-        rowDiv.style.marginBottom = "5px";
-  
-        const labelSpan = document.createElement('span');
-        labelSpan.textContent = plant;
-        rowDiv.appendChild(labelSpan);
-  
-        const delBtn = document.createElement('button');
-        delBtn.textContent = "Delete";
-        delBtn.onclick = () => deletePlant(plant);
-        rowDiv.appendChild(delBtn);
-  
-        container.appendChild(rowDiv);
-      });
-    }
-  
-    document.getElementById('add-plant-btn').addEventListener('click', () => {
-      const newVal = document.getElementById('new-plant-input').value.trim();
-      if (!newVal) {
-        alert("Please enter an IP or DNS name.");
-        return;
-      }
-      fetch('/api/settings')
-        .then(r => r.json())
-        .then(settings => {
-          const arr = settings.additional_plants || [];
-          if (arr.includes(newVal)) {
-            alert("That entry already exists!");
-            return;
-          }
-          arr.push(newVal);
-          saveSettings("/api/settings/", { additional_plants: arr });
-          document.getElementById('new-plant-input').value = "";
-        })
-        .catch(err => console.error("Error adding new plant:", err));
-    });
-  
-    function deletePlant(plant) {
-      fetch('/api/settings')
-        .then(r => r.json())
-        .then(settings => {
-          let arr = settings.additional_plants || [];
-          arr = arr.filter(item => item !== plant);
-          saveSettings("/api/settings/", { additional_plants: arr });
-        })
-        .catch(err => console.error("Error deleting plant:", err));
-    }
   
     // Code Update (No Restart)
     document.getElementById('update-only-btn').addEventListener('click', () => {
@@ -1235,149 +890,7 @@
           setTimeout(() => window.location.reload(), 10000);
         });
     });
-  
-    // POWER OUTLETS SECTION
-    function renderPowerOutlets(powerControls) {
-      const container = document.getElementById('power-outlets-list');
-      container.innerHTML = ""; // Clear old contents
-  
-      powerControls.forEach((outlet, index) => {
-        const card = document.createElement('div');
-        card.classList.add('power-outlet-card');
-  
-        // Title
-        const title = document.createElement('h4');
-        title.textContent = `${outlet.label || 'Unnamed Outlet'} (${outlet.outlet_ip})`;
-        card.appendChild(title);
-  
-        // Existing tracked valves
-        const tvList = document.createElement('div');
-        tvList.id = `tv-list-${index}`;
-        (outlet.tracked_valves || []).forEach(tv => {
-          const row = document.createElement('div');
-          row.classList.add('tracked-valve-row');
-  
-          // Show the label if it exists, else fallback to the raw valve_id
-          const displayLabel = tv.valve_label || tv.valve_id;
-          row.innerHTML = `<span>Host: ${tv.host_ip}, Valve: ${displayLabel}</span>`;
-  
-          const removeBtn = document.createElement('button');
-          removeBtn.textContent = "Remove";
-          removeBtn.addEventListener('click', () => {
-            removeTrackedValve(index, tv.host_ip, tv.valve_id);
-          });
-          row.appendChild(removeBtn);
-  
-          tvList.appendChild(row);
-        });
-        card.appendChild(tvList);
-  
-        // Add new tracked valve form
-        const addDiv = document.createElement('div');
-        addDiv.style.marginTop = "8px";
-        addDiv.innerHTML = `
-          <label>Remote IP: </label>
-          <input type="text" id="tv-ip-${index}" style="width:120px;margin-right:6px;">
-          <button id="tv-retrieve-btn-${index}">Retrieve</button>
-          <label> Valve:</label>
-          <select id="tv-select-${index}" style="margin-right:6px;">
-            <option value="">Select Valve</option>
-          </select>
-          <button id="tv-add-btn-${index}">Add Valve</button>
-        `;
-        card.appendChild(addDiv);
-  
-        // Delete-outlet button
-        const delBtn = document.createElement('button');
-        delBtn.textContent = "Delete This Outlet";
-        delBtn.style.marginTop = "10px";
-        delBtn.addEventListener('click', () => {
-          removeOutlet(index);
-        });
-        card.appendChild(delBtn);
-  
-        container.appendChild(card);
-  
-        // Attach event listeners
-        const retrieveBtn = document.getElementById(`tv-retrieve-btn-${index}`);
-        const addValveBtn = document.getElementById(`tv-add-btn-${index}`);
-        const ipField     = document.getElementById(`tv-ip-${index}`);
-        const valveSelect = document.getElementById(`tv-select-${index}`);
-  
-        if (retrieveBtn) {
-          retrieveBtn.addEventListener('click', () => {
-            const ipVal = (ipField?.value || "").trim();
-            if (!ipVal) return;
-            retrieveValvesFromIP(ipVal, `tv-select-${index}`)
-              .then(vals => console.log("Valves retrieved for outlet:", vals))
-              .catch(err => console.error("Error retrieving valves:", err));
-          });
-        }
-  
-        if (addValveBtn) {
-          addValveBtn.addEventListener('click', () => {
-            const ipVal    = (ipField?.value || "").trim();
-            const valveVal = valveSelect?.value || "";
-            if (!ipVal || !valveVal) return;
-            addTrackedValve(index, ipVal, valveVal);
-          });
-        }
-      });
-    }
-  
-    function addTrackedValve(outletIndex, host_ip, valve_id) {
-      fetch('/api/settings')
-        .then(r => r.json())
-        .then(settings => {
-          const powerControls = settings.power_controls || [];
-          if (!powerControls[outletIndex]) return;
-  
-          if (!powerControls[outletIndex].tracked_valves) {
-            powerControls[outletIndex].tracked_valves = [];
-          }
-  
-          // Get the label from the selected <option>
-          const theSelect = document.getElementById('tv-select-' + outletIndex);
-          const selectedLabel = theSelect.options[theSelect.selectedIndex].text;
-  
-          // Store both ID and label
-          powerControls[outletIndex].tracked_valves.push({
-            host_ip: host_ip,
-            valve_id: valve_id,
-            valve_label: selectedLabel
-          });
-  
-          saveSettings("/api/settings/", { power_controls: powerControls });
-        })
-        .catch(err => console.error("Error adding tracked valve:", err));
-    }
-  
-    function removeOutlet(outletIndex) {
-      fetch('/api/settings')
-        .then(r => r.json())
-        .then(settings => {
-          const powerControls = settings.power_controls || [];
-          if (outletIndex < 0 || outletIndex >= powerControls.length) return;
-          powerControls.splice(outletIndex, 1);
-          saveSettings("/api/settings/", { power_controls: powerControls });
-        })
-        .catch(err => console.error("Error removing outlet:", err));
-    }
-  
-    function removeTrackedValve(outletIndex, host_ip, valve_id) {
-      fetch('/api/settings')
-        .then(r => r.json())
-        .then(settings => {
-          const powerControls = settings.power_controls || [];
-          if (!powerControls[outletIndex]) return;
-  
-          let tv = powerControls[outletIndex].tracked_valves || [];
-          tv = tv.filter(item => !(item.host_ip === host_ip && item.valve_id === valve_id));
-          powerControls[outletIndex].tracked_valves = tv;
-          saveSettings("/api/settings/", { power_controls: powerControls });
-        })
-        .catch(err => console.error("Error removing tracked valve:", err));
-    }
+
   
     // Export
     document.getElementById('export-btn').addEventListener('click', () => {

@@ -18,13 +18,10 @@ from flask_socketio import SocketIO
 # Blueprints
 from api.ph import ph_blueprint
 from api.pump_relay import relay_blueprint
-from api.water_level import water_level_blueprint
 from api.settings import settings_blueprint
 from api.logs import log_blueprint
 from api.dosing import dosing_blueprint
-from api.valve_relay import valve_relay_blueprint
 from api.update_code import update_code_blueprint
-from api.ec import ec_blueprint
 from api.debug import debug_blueprint
 from api.notifications import notifications_blueprint
 
@@ -39,8 +36,6 @@ from services.auto_dose_utils import reset_auto_dose_timer
 from services.ph_service import get_latest_ph_reading, serial_reader
 from services.dosage_service import get_dosage_info, perform_auto_dose
 from services.error_service import check_for_hardware_errors
-from services.water_level_service import monitor_water_level_sensors
-from services.power_control_service import start_power_control_loop
 from utils.settings_utils import load_settings
 
 ########################################################################
@@ -149,22 +144,7 @@ def broadcast_ph_readings():
         except Exception as e:
             log_with_timestamp(f"[Broadcast] Error broadcasting pH value: {e}")
 
-def broadcast_ec_readings():
-    log_with_timestamp("Inside function for broadcasting EC readings")
-    last_emitted_value = None
-    while True:
-        try:
-            from services.ec_service import get_latest_ec_reading
-            ec_value = get_latest_ec_reading()
-            if ec_value is not None:
-                if ec_value != last_emitted_value:
-                    last_emitted_value = ec_value
-                    socketio.emit('ec_update', {'ec': ec_value})
-                    log_with_timestamp(f"[EC Broadcast] Emitting EC update: {ec_value}")
-            eventlet.sleep(1)
-        except Exception as e:
-            log_with_timestamp(f"[EC Broadcast] Error: {e}")
-            eventlet.sleep(5)
+
 
 def broadcast_status():
     """
@@ -187,13 +167,6 @@ def start_threads():
     log_with_timestamp("Spawning broadcast_ph_readings...")
     eventlet.spawn(broadcast_ph_readings)
 
-    log_with_timestamp("Spawning broadcast_ec_readings...")
-    eventlet.spawn(broadcast_ec_readings)
-
-    from services.ec_service import start_ec_serial_reader
-    log_with_timestamp("Spawning ec_serial_reader...")
-    eventlet.spawn(start_ec_serial_reader)
-
     log_with_timestamp("Spawning auto_dosing_loop...")
     eventlet.spawn(auto_dosing_loop)
 
@@ -207,14 +180,6 @@ def start_threads():
     log_with_timestamp("Spawning hardware error checker...")
     eventlet.spawn(check_for_hardware_errors)
 
-    log_with_timestamp("Spawning water level sensor monitor...")
-    eventlet.spawn(monitor_water_level_sensors)
-
-    from services.valve_relay_service import init_valve_thread
-    init_valve_thread()
-
-    log_with_timestamp("Spawning water power control monitor...")
-    start_power_control_loop()
 
 # Start threads so Gunicorn sees them
 start_threads()
@@ -224,12 +189,9 @@ start_threads()
 ########################################################################
 app.register_blueprint(ph_blueprint, url_prefix='/api/ph')
 app.register_blueprint(relay_blueprint, url_prefix='/api/relay')
-app.register_blueprint(water_level_blueprint, url_prefix='/api/water_level')
 app.register_blueprint(settings_blueprint, url_prefix='/api/settings')
 app.register_blueprint(log_blueprint, url_prefix='/api/logs')
 app.register_blueprint(dosing_blueprint, url_prefix="/api/dosage")
-app.register_blueprint(valve_relay_blueprint, url_prefix='/api/valve_relay')
-app.register_blueprint(ec_blueprint, url_prefix='/api/ec')
 app.register_blueprint(update_code_blueprint, url_prefix='/api/system')
 app.register_blueprint(debug_blueprint, url_prefix='/debug')
 app.register_blueprint(notifications_blueprint, url_prefix='/api/notifications')

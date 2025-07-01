@@ -39,45 +39,9 @@ if not os.path.exists(SETTINGS_FILE):
             "usb_roles": {
                 "ph_probe": None,
                 "relay": None,
-                "valve_relay": None,
-                "ec_meter": None
             },
             "pump_calibration": {"pump1": 0.5, "pump2": 0.5},
             "relay_ports": {"ph_up": 1, "ph_down": 2},
-
-            # The local usb-based labels for a physically attached relay board
-            "valve_labels": {
-                "1": "Valve #1",
-                "2": "Valve #2",
-                "3": "Valve #3",
-                "4": "Valve #4",
-                "5": "Valve #5",
-                "6": "Valve #6",
-                "7": "Valve #7",
-                "8": "Valve #8"
-            },
-
-            # Water-level sensors
-            "water_level_sensors": {
-                "sensor1": {"label": "Full",  "pin": 17},
-                "sensor2": {"label": "3 Gal", "pin": 18},
-                "sensor3": {"label": "Empty", "pin": 19}
-            },
-            "plant_info": {},
-            "additional_plants": [],
-
-            # Let them store fill_valve_ip, fill_valve, fill_valve_label, etc.
-            "fill_valve_ip": "",
-            "fill_valve": "",
-            "fill_valve_label": "",
-            "drain_valve_ip": "",
-            "drain_valve": "",
-            "drain_valve_label": "",
-            "fill_sensor": "",
-            "drain_sensor": "",
-
-            # For Shelly or other power outlets
-            "power_controls": [],
 
             # NEW: Default Discord notification settings
             "discord_enabled": False,
@@ -147,12 +111,7 @@ def update_settings():
         del new_settings["water_level_sensors"]
         water_sensors_updated = True
 
-    # 3) Merge power_controls if present
-    if "power_controls" in new_settings:
-        current_settings["power_controls"] = new_settings["power_controls"]
-        del new_settings["power_controls"]
-
-    # 4) Merge everything else (system_name, fill_valve, fill_valve_label, etc.)
+    # 3) Merge everything else (system_name, etc.)
     #    This includes our new Discord fields if present: "discord_enabled", "discord_webhook_url"
     current_settings.update(new_settings)
     save_settings(current_settings)
@@ -189,7 +148,7 @@ def update_settings():
 
 @settings_blueprint.route('/reset', methods=['POST'])
 def reset_settings():
-    """Reset all settings to defaults, including fill_valve_label, etc."""
+    """Reset all settings to defaults, etc."""
     default_settings = {
         "system_name": "Garden",
         "ph_range": {"min": 5.5, "max": 6.5},
@@ -204,40 +163,9 @@ def reset_settings():
         "usb_roles": {
             "ph_probe": None,
             "relay": None,
-            "valve_relay": None,
-            "ec_meter": None
         },
         "pump_calibration": {"pump1": 0.5, "pump2": 0.5},
         "relay_ports": {"ph_up": 1, "ph_down": 2},
-
-        # water valve assignment
-        "fill_valve_ip": "",
-        "fill_valve": "",
-        "fill_valve_label": "",
-        "fill_sensor": "",
-        "drain_valve_ip": "",
-        "drain_valve": "",
-        "drain_valve_label": "",
-        "drain_sensor": "",
-
-        "valve_labels": {
-            "1": "Valve #1",
-            "2": "Valve #2",
-            "3": "Valve #3",
-            "4": "Valve #4",
-            "5": "Valve #5",
-            "6": "Valve #6",
-            "7": "Valve #7",
-            "8": "Valve #8"
-        },
-        "water_level_sensors": {
-            "sensor1": {"label": "Full",  "pin": 17},
-            "sensor2": {"label": "3 Gal", "pin": 18},
-            "sensor3": {"label": "Empty", "pin": 19}
-        },
-        "plant_info": {},
-        "additional_plants": [],
-        "power_controls": [],
 
         # Also reset Discord to default
         "discord_enabled": False,
@@ -284,21 +212,17 @@ def list_usb_devices():
 
 @settings_blueprint.route('/assign_usb', methods=['POST'])
 def assign_usb_device():
-    """Assign or clear a USB device for pH probe, dosing relay, valve relay, or ec_meter."""
-    from services.valve_relay_service import init_valve_thread, stop_valve_thread
+    """Assign or clear a USB device for pH probe, dosing relay."""
 
     data = request.get_json()
     role = data.get("role")
     device = data.get("device")
 
-    if role not in ["ph_probe", "relay", "valve_relay", "ec_meter"]:
+    if role not in ["ph_probe", "relay"]:
         return jsonify({"status": "failure", "error": "Invalid role"}), 400
 
     settings = load_settings()
     old_device = settings.get("usb_roles", {}).get(role)
-
-    if role == "valve_relay" and old_device != device:
-        stop_valve_thread()
 
     # Clear or set
     if not device:
@@ -322,9 +246,7 @@ def assign_usb_device():
     elif role == "relay":
         from services.pump_relay_service import reinitialize_relay_service
         reinitialize_relay_service()
-    elif role == "valve_relay" and device:
-        init_valve_thread()
-    # ec_meter has no special logic yet
+
 
     emit_status_update()
     return jsonify({"status": "success", "usb_roles": settings["usb_roles"]})
@@ -386,13 +308,10 @@ def import_settings():
         try:
             from services.ph_service import restart_serial_reader
             from services.pump_relay_service import reinitialize_relay_service
-            from services.valve_relay_service import stop_valve_thread, init_valve_thread
             from services.auto_dose_utils import reset_auto_dose_timer
 
             restart_serial_reader()
             reinitialize_relay_service()
-            stop_valve_thread()
-            init_valve_thread()
             reset_auto_dose_timer()
 
             print("[IMPORT] Successfully re-initialized dependent services.")
