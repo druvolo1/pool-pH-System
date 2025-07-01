@@ -8,7 +8,6 @@ from datetime import datetime
 from status_namespace import emit_status_update
 from services.auto_dose_state import auto_dose_state
 from services.auto_dose_utils import reset_auto_dose_timer
-from services.plant_service import get_weeks_since_start
 from utils.settings_utils import load_settings, save_settings
 
 import requests  # For sending the Discord test POST
