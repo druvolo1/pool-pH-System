@@ -12,6 +12,8 @@ from utils.settings_utils import load_settings, save_settings
 
 import requests  # For sending the Discord test POST
 
+import glob
+
 settings_blueprint = Blueprint('settings', __name__)
 
 # Path to the settings file
@@ -173,43 +175,29 @@ def reset_settings():
 
 @settings_blueprint.route('/usb_devices', methods=['GET'])
 def list_usb_devices():
-    """
-    Return a list of *all* serial devices the Pi can see and clear any
-    USB-role assignments that are no longer present.
-
-    We enumerate four common patterns:
-      • /dev/serial/by-path/*
-      • /dev/serial/by-id/*
-      • /dev/ttyUSB*
-      • /dev/ttyACM*
-    """
-    import glob
-
-    # ---- gather every matching path -------------------------------------------------
+    """Return all visible serial devices and prune stale assignments."""
+    # 1) enumerate every likely filename
     patterns = [
         "/dev/serial/by-path/*",
         "/dev/serial/by-id/*",
         "/dev/ttyUSB*",
         "/dev/ttyACM*",
     ]
-    paths: list[str] = []
+    paths = []
     for pattern in patterns:
         paths.extend(glob.glob(pattern))
 
     devices = [{"device": p} for p in sorted(paths)]
 
-    # ---- ensure settings['usb_roles'] exists and purge stale assignments ------------
+    # 2) drop assignments whose device has truly vanished
     settings = load_settings()
     usb_roles = settings.setdefault("usb_roles", {"ph_probe": None, "relay": None})
 
     connected_paths = [d["device"] for d in devices]
-    modified = False
-    for role, assigned in list(usb_roles.items()):
-        if assigned and assigned not in connected_paths:
-            usb_roles[role] = None
-            modified = True
-
-    if modified:
+    if any(assigned and assigned not in connected_paths for assigned in usb_roles.values()):
+        for role, assigned in usb_roles.items():
+            if assigned and assigned not in connected_paths:
+                usb_roles[role] = None
         save_settings(settings)
 
     emit_status_update()
