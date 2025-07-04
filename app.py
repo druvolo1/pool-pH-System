@@ -24,6 +24,7 @@ from api.dosing import dosing_blueprint
 from api.update_code import update_code_blueprint
 from api.debug import debug_blueprint
 from api.notifications import notifications_blueprint
+from api.screenlogic_control import bp as screenlogic_bp
 
 # Import the aggregator's set_socketio_instance + our /status namespace
 from status_namespace import StatusNamespace, set_socketio_instance
@@ -79,7 +80,7 @@ socketio.on_namespace(StatusNamespace('/status'))
 # 3) Background tasks
 ########################################################################
 def auto_dosing_loop():
-    from api.settings import load_settings
+    #from api.settings import load_settings
     log_with_timestamp("Inside auto dosing loop")
 
     while True:
@@ -162,7 +163,7 @@ def broadcast_status():
 
 def start_threads():
     settings = load_settings()
-    system_name = settings.get("system_name", "Garden")
+    #system_name = settings.get("system_name", "Garden")
 
     log_with_timestamp("Spawning broadcast_ph_readings...")
     eventlet.spawn(broadcast_ph_readings)
@@ -182,7 +183,6 @@ def start_threads():
 
     log_with_timestamp("Starting Screenlogic...")
     from services.screenlogic_service import screenlogic_service
-    from api.screenlogic_control import bp as screenlogic_bp 
     screenlogic_service.start()
 
 
