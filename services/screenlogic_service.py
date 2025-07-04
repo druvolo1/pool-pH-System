@@ -38,6 +38,7 @@ class ScreenLogicService:
 
     # ─────────────────────────────── main loop ───────────────────────────────
     def _run(self) -> None:
+        """Worker thread: poll ScreenLogic gateway on the configured interval."""
         while not self._stop.is_set():
             try:
                 cfg = load_settings().get("screenlogic", {})
@@ -45,96 +46,72 @@ class ScreenLogicService:
                     time.sleep(10)
                     continue
 
-                host     = str(cfg.get("host", "")).strip()
-                interval = int(cfg.get("poll_interval", 30))
+                host      = str(cfg.get("host", "")).strip()
+                interval  = int(cfg.get("poll_interval", 30))
                 if not host:
-                    _log.warning("[ScreenLogic] enabled but no host/ip set")
+                    _log.warning("ScreenLogic enabled but no host/ip set")
                     time.sleep(interval)
                     continue
 
                 async def _poll_once() -> dict:
-                    gw = ScreenLogicGateway()          # v0.11+: ctor takes no args
+                    gw = ScreenLogicGateway()          # ctor takes no args (v 0.10+)
                     await gw.async_connect(host)
-                    await gw.async_update()
+                    await gw.async_update()            # pulls *all* data trees
 
-                    # ── Temperature & environmental ─────────────────────────
-                    air_temp   = gw.get_value(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.AIR_TEMPERATURE)
-                    water_temp = (
-                        gw.get_value(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.LAST_TEMPERATURE)
-                        or gw.get_value(DEVICE.BODY, 0, GROUP.SENSOR, VALUE.LAST_TEMPERATURE)
-                    )
+                    # ───── body / pump id helpers ─────
+                    bodies = list((gw.get_data(DEVICE.BODY) or {}).keys())
+                    pools_body_id = bodies[0] if bodies else None
 
-                    # ── Chemistry (IntelliChem first, then controller) ─────
-                    ph_now  = (
-                        gw.get_value(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.PH_NOW)
-                        or gw.get_value(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.PH_NOW)
-                    )
-                    orp_now = (
-                        gw.get_value(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.ORP_NOW)
-                        or gw.get_value(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.ORP_NOW)
-                    )
+                    pumps = list((gw.get_data(DEVICE.PUMP) or {}).keys())
+                    pump0 = pumps[0] if pumps else None
 
-                    # ── Salt cell / chlorine generator ─────────────────────
-                    salt_ppm      = gw.get_value(DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_PPM)
-                    salt_tds_ppm  = gw.get_value(DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_TDS_PPM)
-                    super_chlor   = gw.get_value(DEVICE.SCG, GROUP.SENSOR, VALUE.SUPER_CHLORINATE)
-                    super_chlor_t = gw.get_value(DEVICE.SCG, GROUP.SENSOR, VALUE.SUPER_CHLOR_TIMER)
+                    def v(*path):                          # convenience
+                        return gw.get_value(*path)
 
-                    # ── Pump telemetry (pump index 0) ──────────────────────
-                    pump_rpm   = gw.get_value(DEVICE.PUMP, 0, GROUP.SENSOR, VALUE.RPM_NOW)
-                    pump_watts = gw.get_value(DEVICE.PUMP, 0, GROUP.SENSOR, VALUE.WATTS_NOW)
-                    pump_gpm   = gw.get_value(DEVICE.PUMP, 0, GROUP.SENSOR, VALUE.GPM_NOW)
-                    pump_state = gw.get_value(DEVICE.PUMP, 0, GROUP.CONFIGURATION, VALUE.STATE)
+                    data = {
+                        # environmental
+                        "air_temp":       v(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.AIR_TEMPERATURE),
+                        "water_temp":     v(DEVICE.BODY, pools_body_id, GROUP.SENSOR, VALUE.LAST_TEMPERATURE)
+                                            if pools_body_id is not None else None,
 
-                    # ── Water-balance readings ─────────────────────────────
-                    calcium_hardness  = gw.get_value(DEVICE.CONTROLLER, GROUP.WATER_BALANCE, VALUE.CALCIUM_HARDNESS)
-                    total_alkalinity  = gw.get_value(DEVICE.CONTROLLER, GROUP.WATER_BALANCE, VALUE.TOTAL_ALKALINITY)
-                    cya               = gw.get_value(DEVICE.CONTROLLER, GROUP.WATER_BALANCE, VALUE.CYA)
-                    saturation_index  = gw.get_value(DEVICE.CONTROLLER, GROUP.WATER_BALANCE, VALUE.SATURATION)
-                    corrosive_index   = gw.get_value(DEVICE.CONTROLLER, GROUP.WATER_BALANCE, VALUE.CORROSIVE)
+                        # chemistry (IntelliChem)
+                        "ph":             v(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.PH_NOW),
+                        "orp":            v(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.ORP_NOW),
+
+                        # salt-cell
+                        "salt_ppm":       v(DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_PPM),
+                        "salt_tds_ppm":   v(DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_TDS_PPM),
+                        "super_chlorinate": v(DEVICE.SCG, GROUP.SENSOR, VALUE.SUPER_CHLORINATE),
+                        "super_chlor_timer": v(DEVICE.SCG, GROUP.SENSOR, VALUE.SUPER_CHLOR_TIMER),
+
+                        # water balance (IntelliChem)
+                        "calcium_hardness": v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.CALCIUM_HARDNESS),
+                        "total_alkalinity": v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.TOTAL_ALKALINITY),
+                        "cya":              v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.CYA),
+                        "saturation_index": v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.SATURATION),
+                        "corrosive_index":  v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.CORROSIVE),
+
+                        # first-pump snapshot
+                        "pump_rpm":     v(DEVICE.PUMP, pump0, VALUE.RPM_NOW)   if pump0 is not None else None,
+                        "pump_watts":   v(DEVICE.PUMP, pump0, VALUE.WATTS_NOW) if pump0 is not None else None,
+                        "pump_gpm":     v(DEVICE.PUMP, pump0, VALUE.GPM_NOW)   if pump0 is not None else None,
+                        "pump_state":   v(DEVICE.PUMP, pump0, VALUE.STATE)     if pump0 is not None else None,
+                    }
 
                     await gw.async_disconnect()
-
-                    return {
-                        # environmental
-                        "air_temp":           air_temp,
-                        "water_temp":         water_temp,
-
-                        # chemistry
-                        "ph":                 ph_now,
-                        "orp":                orp_now,
-                        "salt_ppm":           salt_ppm,
-                        "salt_tds_ppm":       salt_tds_ppm,
-
-                        # pump
-                        "pump_rpm":           pump_rpm,
-                        "pump_watts":         pump_watts,
-                        "pump_gpm":           pump_gpm,
-                        "pump_state":         pump_state,
-
-                        # super-chlorination
-                        "super_chlorinate":   super_chlor,
-                        "super_chlor_timer":  super_chlor_t,
-
-                        # water-balance
-                        "calcium_hardness":   calcium_hardness,
-                        "total_alkalinity":   total_alkalinity,
-                        "cya":                cya,
-                        "saturation_index":   saturation_index,
-                        "corrosive_index":    corrosive_index,
-                    }
+                    return data
 
                 new_data = asyncio.run(_poll_once())
                 _latest_data.clear()
                 _latest_data.update(new_data)
-                _log.debug("[ScreenLogic] update -> %s", new_data)
+                _log.debug("ScreenLogic update: %s", new_data)
 
-                # emit via Socket-IO (deferred import avoids circular refs)
+                # avoid circular import
                 from status_namespace import emit_status_update
                 emit_status_update(force_emit=True)
 
             except Exception as exc:
-                _log.warning("[ScreenLogic] poll failed: %s", exc)
+                _log.warning("ScreenLogic poll failed: %s", exc)
                 interval = cfg.get("poll_interval", 30) or 30
 
             time.sleep(interval)
