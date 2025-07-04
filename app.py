@@ -182,6 +182,7 @@ def start_threads():
 
     log_with_timestamp("Starting Screenlogic...")
     from services.screenlogic_service import screenlogic_service
+    from api.screenlogic_control import bp as screenlogic_bp 
     screenlogic_service.start()
 
 
@@ -199,6 +200,7 @@ app.register_blueprint(dosing_blueprint, url_prefix="/api/dosage")
 app.register_blueprint(update_code_blueprint, url_prefix='/api/system')
 app.register_blueprint(debug_blueprint, url_prefix='/debug')
 app.register_blueprint(notifications_blueprint, url_prefix='/api/notifications')
+app.register_blueprint(screenlogic_bp) 
 
 
 ########################################################################
