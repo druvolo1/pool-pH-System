@@ -1,71 +1,81 @@
-"""ScreenLogic polling service for the Pool-pH controller
-   ------------------------------------------------------
-   • Polls on a background thread.
-   • Harvests *all* scalar values published by screenlogicpy.
-   • Exposes them via get_latest_screenlogic_data().
+"""ScreenLogic polling service – *full* data export
+   -------------------------------------------------
+   • Runs on a background thread.
+   • Retrieves the gateway’s complete data tree.
+   • Flattens every scalar field (int / float / str / bool).
+   • Exposes last snapshot via get_latest_screenlogic_data().
 """
 
 from __future__ import annotations
 
-import asyncio, logging, threading, time
+import asyncio
+import logging
+import threading
+import time
 from typing import Any, Dict, List
 
 from screenlogicpy import ScreenLogicGateway
 from utils.settings_utils import load_settings
 
 _log = logging.getLogger(__name__)
-_latest_data: Dict[str, Any] = {}      # last good poll → read by status_namespace
+
+# Most-recent flattened payload
+_latest_data: Dict[str, Any] = {}
 
 
-# ───────────────────────── helpers ──────────────────────────
-def _flatten_screenlogic(data: dict) -> Dict[str, Any]:
+# ───────────────────────── helper: flatten any ScreenLogic tree ─────────────
+def _flatten(node: Any, path: List[str], out: Dict[str, Any]) -> None:
     """
-    Recursively walk `data` (as returned by gw.get_data()) and build a flat
-    dict whose keys are joined by '.' and whose values are whatever is stored
-    in each leaf's **"value"** field.  Everything else (units, names, etc.) is
-    ignored so the payload stays compact and JSON-serialisable.
+    Recursively walk `node` (dict / list / scalar) and append any scalar values
+    to `out` using a '.'-joined path.
     """
+    # scalars we keep
+    if isinstance(node, (int, float, str, bool)) or node is None:
+        out[".".join(path)] = node
+        return
+
+    # dict → recurse into items
+    if isinstance(node, dict):
+        for k, v in node.items():
+            _flatten(v, path + [str(k)], out)
+        return
+
+    # list → recurse with index
+    if isinstance(node, list):
+        for idx, itm in enumerate(node):
+            _flatten(itm, path + [str(idx)], out)
+        return
+
+
+def flatten_screenlogic(data_tree: dict) -> Dict[str, Any]:
+    """Return a flat { dotted.path : scalar } dict for *all* values."""
     flat: Dict[str, Any] = {}
-
-    def _walk(path: List[str], node: Any) -> None:
-        # leaf with a scalar 'value'
-        if isinstance(node, dict) and "value" in node:
-            flat[".".join(path)] = node["value"]
-            return
-        # internal node → recurse
-        if isinstance(node, dict):
-            for k, v in node.items():
-                _walk(path + [str(k)], v)
-
-    _walk([], data)
+    _flatten(data_tree, [], flat)
     return flat
 
 
-# ───────────────────────── service class ────────────────────
+# ───────────────────────── ScreenLogic service class ────────────────────────
 class ScreenLogicService:
-    """Daemon thread that polls the Pentair ScreenLogic gateway."""
-
     def __init__(self) -> None:
-        self._thread: threading.Thread | None = None
+        self._t: threading.Thread | None = None
         self._stop = threading.Event()
 
+    # start / stop -----------------------------------------------------------
     def start(self) -> None:
-        if self._thread and self._thread.is_alive():
+        if self._t and self._t.is_alive():
             return
-        self._thread = threading.Thread(
-            target=self._run, name="ScreenLogicPoller", daemon=True
-        )
-        self._thread.start()
+        self._t = threading.Thread(target=self._run, name="ScreenLogicPoller", daemon=True)
+        self._t.start()
         _log.info("[ScreenLogic] service thread started")
 
     def stop(self) -> None:
         self._stop.set()
 
-    # ───────────────────────── main loop ─────────────────────
+    # main loop --------------------------------------------------------------
     def _run(self) -> None:
         while not self._stop.is_set():
             cfg = load_settings().get("screenlogic", {})
-            interval = int(cfg.get("poll_interval", 5)) or 30
+            interval = int(cfg.get("poll_interval", 30)) or 30
 
             try:
                 if not cfg.get("enabled"):
@@ -74,7 +84,7 @@ class ScreenLogicService:
 
                 host = str(cfg.get("host", "")).strip()
                 if not host:
-                    _log.warning("[ScreenLogic] enabled but no host/IP set")
+                    _log.warning("[ScreenLogic] enabled but no host/IP in settings")
                     time.sleep(interval)
                     continue
 
@@ -82,16 +92,17 @@ class ScreenLogicService:
                     gw = ScreenLogicGateway()
                     await gw.async_connect(host)
                     await gw.async_update()
-                    flat = _flatten_screenlogic(gw.get_data())
+                    flat = flatten_screenlogic(gw.get_data())
                     await gw.async_disconnect()
                     return flat
 
-                new_data = asyncio.run(_poll_once())
+                snapshot = asyncio.run(_poll_once())
                 _latest_data.clear()
-                _latest_data.update(new_data)
-                _log.debug("[ScreenLogic] update: %s", new_data)
+                _latest_data.update(snapshot)
 
-                # push to websocket clients (import here → no circular-import)
+                _log.debug("[ScreenLogic] update (%d fields)", len(snapshot))
+
+                # broadcast to websocket clients
                 from status_namespace import emit_status_update
                 emit_status_update(force_emit=True)
 
@@ -101,11 +112,11 @@ class ScreenLogicService:
             time.sleep(interval)
 
 
-# ───────────────────────── public API ───────────────────────
+# ───────────────────────── public API ───────────────────────────────────────
 def get_latest_screenlogic_data() -> Dict[str, Any]:
-    """Return a *copy* of the most recent flattened ScreenLogic snapshot."""
+    """Return a *copy* of the most recent flattened snapshot."""
     return _latest_data.copy()
 
 
-# singleton used by app.py
+# singleton created at import-time; app.py calls .start()
 screenlogic_service = ScreenLogicService()
