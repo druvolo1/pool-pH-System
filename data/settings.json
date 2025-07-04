@@ -1,0 +1,5 @@
+"screenlogic": {
+  "enabled": true,
+  "host": "172.16.1.197",
+  "poll_interval": 30   // seconds
+},

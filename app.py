@@ -293,6 +293,10 @@ def notifications_page():
 def pool_page():
     pi_ip = get_local_ip()
     return render_template('pool.html', pi_ip=pi_ip)
+
+from services.screenlogic_service import screenlogic_service
+screenlogic_service.start()
+
 ########################################################################
 # MAIN
 ########################################################################

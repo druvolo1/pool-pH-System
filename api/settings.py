@@ -39,6 +39,12 @@ if not os.path.exists(SETTINGS_FILE):
                 "telegram_enabled": False,
                 "telegram_bot_token": "",
                 "telegram_chat_id": "",
+                "screenlogic": {
+                "enabled": false,
+                "host": "172.16.1.197",
+                "poll_interval": 30   // seconds
+},
+
             },
             f,
             indent=4,

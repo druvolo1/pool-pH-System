@@ -32,3 +32,4 @@ wsproto==1.2.0
 zeroconf==0.144.3
 zope.event==5.0
 zope.interface==7.2
+screenlogicpy>=0.9.4,<1.0
