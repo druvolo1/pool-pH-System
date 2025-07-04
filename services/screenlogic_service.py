@@ -21,64 +21,56 @@ class ScreenLogicService:
         self._stop = threading.Event()
 
     # ───────────────────────────── start / stop ──────────────────────────────
-    def start(self) -> None:
-        if self._thread and self._thread.is_alive():
-            return
-        self._thread = threading.Thread(
-            target=self._run, name="ScreenLogicPoller", daemon=True
-        )
-        self._thread.start()
-        _log.info("ScreenLogic service thread started")
+from screenlogicpy.const.data import DEVICE, GROUP, VALUE   # add to imports …
 
-    def stop(self) -> None:
-        self._stop.set()
+# ---------------------------------------------------------------------------
+def _run(self) -> None:
+    """Background worker: poll the ScreenLogic gateway at the configured interval."""
+    while not self._stop.is_set():
+        try:
+            cfg = load_settings().get("screenlogic", {})
+            if not cfg.get("enabled"):
+                time.sleep(10)
+                continue
 
-    # ───────────────────────────── main loop ─────────────────────────────────
-    def _run(self) -> None:
-        while not self._stop.is_set():
-            try:
-                cfg = load_settings().get("screenlogic", {})
-                if not cfg.get("enabled", False):
-                    time.sleep(10)
-                    continue
+            host      = cfg.get("host")
+            interval  = int(cfg.get("poll_interval", 30))
 
-                host = cfg.get("host", "").strip()
-                interval = int(cfg.get("poll_interval", 30))
+            async def _poll_once() -> dict:
+                gw = ScreenLogicGateway()                 # ctor no longer takes host/port
+                await gw.async_connect(host)              # pass IP here
+                await gw.async_update()                   # pull every data set we can
+                data = {
+                    # controller-level sensors
+                    "air_temp": gw.get_value(
+                        DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.AIR_TEMPERATURE
+                    ),
+                    "water_temp": gw.get_value(          # works for single-body pools
+                        DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.LAST_TEMPERATURE
+                    ),
+                    # chemistry (IntelliChem / chemistry board); will be None if absent
+                    "ph": gw.get_value(
+                        DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.PH_NOW
+                    ),
+                }
+                await gw.async_disconnect()
+                return data
 
-                # ─── guard: must have a host/ip ───
-                if not host:
-                    _log.warning("ScreenLogic enabled but no host/ip set in settings.json")
-                    time.sleep(interval)
-                    continue
+            new_data = asyncio.run(_poll_once())
+            _latest_data.clear()
+            _latest_data.update(new_data)
+            _log.debug("ScreenLogic update: %s", new_data)
 
-                async def _poll_once() -> dict:
-                    gw = ScreenLogicGateway()          # ← ctor takes no args
-                    await gw.async_connect(host)       # ← pass IP/host here
-                    await gw.async_update()
+            # defer import → avoids circular-import on module load
+            from status_namespace import emit_status_update
+            emit_status_update(force_emit=True)
 
-                    data = {
-                        "water_temp": gw.get_pool_temp(),
-                        "air_temp":   gw.get_air_temp(),
-                        "ph":         gw.get_ph(),
-                    }
+        except Exception as exc:
+            _log.warning("ScreenLogic poll failed: %s", exc)
+            interval = cfg.get("poll_interval", 30) or 30   # fallback
 
-                    await gw.async_disconnect()
-                    return data
+        time.sleep(interval)
 
-                new_data = asyncio.run(_poll_once())
-                _latest_data.clear()
-                _latest_data.update(new_data)
-                _log.debug("ScreenLogic update: %s", new_data)
-
-                # emit update (import here to avoid circular import)
-                from status_namespace import emit_status_update
-                emit_status_update(force_emit=True)
-
-            except Exception as exc:
-                _log.warning("ScreenLogic poll failed: %s", exc)
-                interval = 30  # fallback delay if cfg missing/bad
-
-            time.sleep(interval)
 
 
 
