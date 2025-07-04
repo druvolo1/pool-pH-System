@@ -189,13 +189,17 @@
       $("#spa-toggle").on("click", ()=> sendCommand({
         target:"circuit", id:SPA_CIRCUIT_ID, action:"toggle"
       }));
-      $("#pool-heat-save").on("click", ()=>{
+      $("#pool-heat-save").on("click", () => {
+        const sp = Number($("#pool-setpoint").val());
+        if (!sp) { alert("Enter a pool set-point first"); return; }
+
         sendCommand({
-          target:"heat", body:0,
-          mode:Number($("#pool-heat-mode").val()),
-          setpoint:Number($("#pool-setpoint").val())
+          target: "heat", body: 0,
+          mode: Number($("#pool-heat-mode").val()),
+          setpoint: sp
         });
       });
+
       $("#spa-heat-save").on("click", ()=>{
         sendCommand({
           target:"heat", body:1,
