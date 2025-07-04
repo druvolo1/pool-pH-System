@@ -8,7 +8,7 @@ from screenlogicpy.const.data import DEVICE, GROUP, VALUE
 from utils.settings_utils import load_settings
 
 _log = logging.getLogger(__name__)
-_latest_data: dict = {}           # last good poll → read by status_namespace
+_latest_data: dict = {}        # last good poll → read by status_namespace
 
 
 def get_latest_screenlogic_data() -> dict:
@@ -23,7 +23,7 @@ class ScreenLogicService:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
 
-    # ─────────────────────────────── start / stop ────────────────────────────
+    # ───────────────────────── start / stop ─────────────────────────
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
             return
@@ -31,12 +31,12 @@ class ScreenLogicService:
             target=self._run, name="ScreenLogicPoller", daemon=True
         )
         self._thread.start()
-        _log.info("ScreenLogic service thread started")
+        _log.info("[ScreenLogic] service thread started")
 
     def stop(self) -> None:
         self._stop.set()
 
-    # ─────────────────────────────── main loop ───────────────────────────────
+    # ───────────────────────── main loop ────────────────────────────
     def _run(self) -> None:
         while not self._stop.is_set():
             try:
@@ -45,48 +45,74 @@ class ScreenLogicService:
                     time.sleep(10)
                     continue
 
-                host     = cfg.get("host", "").strip()
+                host     = str(cfg.get("host", "")).strip()
                 interval = int(cfg.get("poll_interval", 30))
 
                 if not host:
-                    _log.warning("ScreenLogic enabled but no host/ip set in settings")
+                    _log.warning("[ScreenLogic] enabled but no host/ip set")
                     time.sleep(interval)
                     continue
 
                 async def _poll_once() -> dict:
-                    gw = ScreenLogicGateway()          # ctor takes no args (0.11+)
+                    gw = ScreenLogicGateway()              # v0.11+: ctor no args
                     await gw.async_connect(host)
                     await gw.async_update()
 
-                    data = {
-                        "air_temp": gw.get_value(
-                            DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.AIR_TEMPERATURE
-                        ),
-                        "water_temp": gw.get_value(
-                            DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.LAST_TEMPERATURE
-                        ),
-                        "ph": gw.get_value(
+                    # — air temperature is always under controller/sensor —
+                    air_temp = gw.get_value(
+                        DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.AIR_TEMPERATURE
+                    )
+
+                    # — water temperature: newer firmware stores it per-BODY —
+                    water_temp = gw.get_value(
+                        DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.LAST_TEMPERATURE
+                    )
+                    if water_temp is None:  # fall back to first body (usually pool)
+                        water_temp = gw.get_value(
+                            DEVICE.BODY, 0, GROUP.SENSOR, VALUE.LAST_TEMPERATURE
+                        )
+
+                    # — chemistry: IntelliChem if present, else controller —
+                    ph_now = gw.get_value(
+                        DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.PH_NOW
+                    )
+                    if ph_now is None:
+                        ph_now = gw.get_value(
                             DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.PH_NOW
-                        ),
-                    }
+                        )
+
+                    orp_now = gw.get_value(
+                        DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.ORP_NOW
+                    )
+                    salt_ppm = gw.get_value(
+                        DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_PPM
+                    )
+
                     await gw.async_disconnect()
-                    return data
+                    return {
+                        "air_temp":   air_temp,
+                        "water_temp": water_temp,
+                        "ph":         ph_now,
+                        "orp":        orp_now,
+                        "salt_ppm":   salt_ppm,
+                    }
 
                 new_data = asyncio.run(_poll_once())
                 _latest_data.clear()
                 _latest_data.update(new_data)
-                _log.debug("ScreenLogic update: %s", new_data)
+                _log.debug("[ScreenLogic] update -> %s", new_data)
 
-                # avoid circular import by importing here
+                # defer import (avoids circular import on module load)
                 from status_namespace import emit_status_update
+
                 emit_status_update(force_emit=True)
 
             except Exception as exc:
-                _log.warning("ScreenLogic poll failed: %s", exc)
+                _log.warning("[ScreenLogic] poll failed: %s", exc)
                 interval = cfg.get("poll_interval", 30) or 30
 
             time.sleep(interval)
 
 
-# single global instance, started from app.py
+# global singleton started from app.py
 screenlogic_service = ScreenLogicService()
