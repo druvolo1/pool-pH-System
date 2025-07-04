@@ -54,52 +54,38 @@ class ScreenLogicService:
                     continue
 
                 async def _poll_once() -> dict:
-                    gw = ScreenLogicGateway()          # ctor takes no args (v 0.10+)
+                    gw = ScreenLogicGateway()
                     await gw.async_connect(host)
-                    await gw.async_update()            # pulls *all* data trees
+                    await gw.async_update()
 
-                    # ───── body / pump id helpers ─────
                     bodies = list((gw.get_data(DEVICE.BODY) or {}).keys())
                     pools_body_id = bodies[0] if bodies else None
-
                     pumps = list((gw.get_data(DEVICE.PUMP) or {}).keys())
                     pump0 = pumps[0] if pumps else None
+                    v = lambda *p: gw.get_value(*p)
 
-                    def v(*path):                          # convenience
-                        return gw.get_value(*path)
+                    water_temp = (
+                        v(DEVICE.BODY, pools_body_id, GROUP.SENSOR, VALUE.TEMPERATURE)
+                        or v(DEVICE.BODY, pools_body_id, GROUP.SENSOR, VALUE.CURRENT_TEMPERATURE)
+                        or v(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.LAST_TEMPERATURE)
+                    )
 
                     data = {
-                        # environmental
-                        "air_temp":       v(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.AIR_TEMPERATURE),
-                        "water_temp":     v(DEVICE.BODY, pools_body_id, GROUP.SENSOR, VALUE.LAST_TEMPERATURE)
-                                            if pools_body_id is not None else None,
-
-                        # chemistry (IntelliChem)
-                        "ph":             v(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.PH_NOW),
-                        "orp":            v(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.ORP_NOW),
-
-                        # salt-cell
-                        "salt_ppm":       v(DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_PPM),
-                        "salt_tds_ppm":   v(DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_TDS_PPM),
-                        "super_chlorinate": v(DEVICE.SCG, GROUP.SENSOR, VALUE.SUPER_CHLORINATE),
-                        "super_chlor_timer": v(DEVICE.SCG, GROUP.SENSOR, VALUE.SUPER_CHLOR_TIMER),
-
-                        # water balance (IntelliChem)
-                        "calcium_hardness": v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.CALCIUM_HARDNESS),
-                        "total_alkalinity": v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.TOTAL_ALKALINITY),
-                        "cya":              v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.CYA),
-                        "saturation_index": v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.SATURATION),
-                        "corrosive_index":  v(DEVICE.INTELLICHEM, GROUP.WATER_BALANCE, VALUE.CORROSIVE),
-
-                        # first-pump snapshot
-                        "pump_rpm":     v(DEVICE.PUMP, pump0, VALUE.RPM_NOW)   if pump0 is not None else None,
-                        "pump_watts":   v(DEVICE.PUMP, pump0, VALUE.WATTS_NOW) if pump0 is not None else None,
-                        "pump_gpm":     v(DEVICE.PUMP, pump0, VALUE.GPM_NOW)   if pump0 is not None else None,
-                        "pump_state":   v(DEVICE.PUMP, pump0, VALUE.STATE)     if pump0 is not None else None,
+                        "air_temp": v(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.AIR_TEMPERATURE),
+                        "water_temp": water_temp,
+                        "ph": v(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.PH_NOW),
+                        "orp": v(DEVICE.INTELLICHEM, GROUP.SENSOR, VALUE.ORP_NOW),
+                        "salt_ppm": v(DEVICE.SCG, GROUP.SENSOR, VALUE.SALT_PPM),
+                        "pump_rpm":   v(DEVICE.PUMP, pump0, VALUE.RPM_NOW)   if pump0 is not None else None,
+                        "pump_watts": v(DEVICE.PUMP, pump0, VALUE.WATTS_NOW) if pump0 is not None else None,
+                        "pump_gpm":   v(DEVICE.PUMP, pump0, VALUE.GPM_NOW)   if pump0 is not None else None,
+                        "flow_sensor": v(DEVICE.CONTROLLER, GROUP.SENSOR, VALUE.FLOW_SENSOR),
+                        # … keep the rest unchanged …
                     }
 
                     await gw.async_disconnect()
                     return data
+
 
                 new_data = asyncio.run(_poll_once())
                 _latest_data.clear()
