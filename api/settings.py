@@ -31,7 +31,7 @@ _DEFAULTS = {
     "telegram_bot_token": "",
     "telegram_chat_id": "",
     "screenlogic": {           # NEW – Pentair gateway config
-        "enabled": False,
+        "enabled": True,
         "host": "172.16.1.197",
         "poll_interval": 30    # seconds
     }

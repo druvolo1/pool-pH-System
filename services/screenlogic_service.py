@@ -52,14 +52,16 @@ class ScreenLogicService:
                     continue
 
                 async def _poll_once() -> dict:
-                    gw = ScreenLogicGateway(host)        # positional arg
-                    await gw.async_connect()
+                    gw = ScreenLogicGateway()          # ← ctor takes no args
+                    await gw.async_connect(host)       # ← pass IP/host here
                     await gw.async_update()
+
                     data = {
                         "water_temp": gw.get_pool_temp(),
                         "air_temp":   gw.get_air_temp(),
                         "ph":         gw.get_ph(),
                     }
+
                     await gw.async_disconnect()
                     return data
 
