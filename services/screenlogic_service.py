@@ -46,7 +46,7 @@ class ScreenLogicService:
                 interval  = int(cfg.get("poll_interval", 30))
 
                 async def _poll_once() -> dict:
-                    gw = ScreenLogicGateway(host=host)
+                    gw = ScreenLogicGateway(host)
                     await gw.async_connect()
                     await gw.async_update()
                     data = {
