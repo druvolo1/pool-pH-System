@@ -1,11 +1,6 @@
-"""
-Settings blueprint – pool-pH edition
-Only pH-probe + dosing-relay logic is kept.
-"""
-
-from flask import Blueprint, request, jsonify, send_file
 import json, os, subprocess, stat, glob
 from datetime import datetime
+from flask import Blueprint, request, jsonify, send_file
 
 from status_namespace import emit_status_update
 from services.auto_dose_utils import reset_auto_dose_timer
@@ -15,50 +10,45 @@ settings_blueprint = Blueprint("settings", __name__)
 SETTINGS_FILE = os.path.join(os.getcwd(), "data", "settings.json")
 PROGRAM_VERSION = "1.0.62"
 
-# ─────────────────── create defaults on first run ──────────────────────────────
+# ─────────────────────────── default settings ───────────────────────────
+_DEFAULTS = {
+    "system_name": "Pool-pH",
+    "ph_range": {"min": 7.2, "max": 7.8},
+    "ph_target": 7.5,
+    "max_dosing_amount": 5,
+    "dosing_interval": 1.0,
+    "system_volume": 45.0,
+    "dosage_strength": {"ph_up": 1.0, "ph_down": 1.0},
+    "auto_dosing_enabled": False,
+    "time_zone": "America/New_York",
+    "daylight_savings_enabled": True,
+    "usb_roles": {"ph_probe": None, "relay": None},
+    "pump_calibration": {"pump1": 0.5, "pump2": 0.5},
+    "relay_ports": {"ph_up": 1, "ph_down": 2},
+    "discord_enabled": False,
+    "discord_webhook_url": "",
+    "telegram_enabled": False,
+    "telegram_bot_token": "",
+    "telegram_chat_id": "",
+    "screenlogic": {           # NEW – Pentair gateway config
+        "enabled": False,
+        "host": "172.16.1.197",
+        "poll_interval": 30    # seconds
+    }
+}
+
 if not os.path.exists(SETTINGS_FILE):
     os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
-    with open(SETTINGS_FILE, "w") as f:
-        json.dump(
-            {
-                "system_name": "Pool-pH",
-                "ph_range": {"min": 7.2, "max": 7.8},
-                "ph_target": 7.5,
-                "max_dosing_amount": 5,
-                "dosing_interval": 1.0,
-                "system_volume": 45.0,                 # gallons
-                "dosage_strength": {"ph_up": 1.0, "ph_down": 1.0},
-                "auto_dosing_enabled": False,
-                "time_zone": "America/New_York",
-                "daylight_savings_enabled": True,
-                "usb_roles": {"ph_probe": None, "relay": None},
-                "pump_calibration": {"pump1": 0.5, "pump2": 0.5},
-                "relay_ports": {"ph_up": 1, "ph_down": 2},
-                "discord_enabled": False,
-                "discord_webhook_url": "",
-                "telegram_enabled": False,
-                "telegram_bot_token": "",
-                "telegram_chat_id": "",
-                "screenlogic": {
-                "enabled": false,
-                "host": "172.16.1.197",
-                "poll_interval": 30   // seconds
-},
+    with open(SETTINGS_FILE, "w") as fp:
+        json.dump(_DEFAULTS, fp, indent=4)
 
-            },
-            f,
-            indent=4,
-        )
-
-
-# ─────────────────────────── helpers ───────────────────────────────────────────
+# -------------- helpers (unchanged from your previous file) --------------
 def _ensure_executable(path: str):
     if not os.path.isfile(path):
         return
     mode = os.stat(path).st_mode
     if not (mode & stat.S_IXUSR):
         subprocess.run(["chmod", "+x", path], check=True)
-
 
 # ─────────────────────────── routes ────────────────────────────────────────────
 @settings_blueprint.route("/", methods=["GET"])

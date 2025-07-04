@@ -15,6 +15,7 @@ from services.ph_service import get_latest_ph_reading
 from utils.settings_utils import load_settings
 from services.auto_dose_state import auto_dose_state
 from services.notification_service import get_all_notifications
+from services.screenlogic_service import get_latest_screenlogic_data
 
 _socketio = None
 
@@ -244,6 +245,7 @@ def emit_status_update(force_emit=False):
         status_payload = {
             "settings":     settings,
             "current_ph":   get_latest_ph_reading(),
+            "screenlogic":  get_latest_screenlogic_data(),
             # ... any additional fields ...
         }
 

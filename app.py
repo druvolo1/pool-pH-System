@@ -180,6 +180,10 @@ def start_threads():
     log_with_timestamp("Spawning hardware error checker...")
     eventlet.spawn(check_for_hardware_errors)
 
+    log_with_timestamp("Starting Screenlogic...")
+    from services.screenlogic_service import screenlogic_service
+    screenlogic_service.start()
+
 
 # Start threads so Gunicorn sees them
 start_threads()
@@ -294,8 +298,7 @@ def pool_page():
     pi_ip = get_local_ip()
     return render_template('pool.html', pi_ip=pi_ip)
 
-from services.screenlogic_service import screenlogic_service
-screenlogic_service.start()
+
 
 ########################################################################
 # MAIN

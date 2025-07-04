@@ -7,7 +7,6 @@
   <!-- Styles & basic libs -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    /* simple grey-out helper */
     .disabled-section{opacity:.25;pointer-events:none;position:relative}
     .disabled-section[data-tip]::after{
       content:attr(data-tip);display:none;position:absolute;top:6px;left:6px;
@@ -131,6 +130,17 @@
         </form>
       </div>
 
+      <!-- ScreenLogic integration (NEW) -->
+      <div class="data-container" id="screenlogic-container">
+        <h2>Pentair ScreenLogic</h2>
+        <form id="screenlogic-form">
+          <label><input type="checkbox" id="sl-enabled"> Enable</label><br><br>
+          <label for="sl-host">Gateway IP&nbsp;/ Host:</label>
+          <input type="text" id="sl-host" placeholder="192.168.1.x">
+          <button type="submit" id="screenlogic-save">Save</button>
+        </form>
+      </div>
+
       <!-- Notifications -->
       <div class="data-container" id="notifications-container">
         <h2>Notifications</h2>
@@ -190,7 +200,7 @@
     </div>
   </main>
 
-  <!-- only one script, the clean pool-pH version -->
+  <!-- clean pool-pH script -->
   <script src="{{ url_for('static', filename='settings.js') }}"></script>
 </body>
 </html>
