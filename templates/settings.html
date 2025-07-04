@@ -4,35 +4,20 @@
   <meta charset="UTF-8">
   <title>Settings</title>
 
-  <!-- styles + libs -->
+  <!-- Styles & basic libs -->
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-
   <style>
-    /* simple “grey-out when disabled” helper */
-    .disabled-section {
-      opacity: .25;
-      pointer-events: none;
-      position: relative;
-    }
-    .disabled-section[data-tip]::after {
-      content: attr(data-tip);
-      display: none;
-      position: absolute;
-      top: 6px; left: 6px;
-      background:#333; color:#fff;
-      padding:4px 8px; border-radius:4px;
-      font-size:.8rem;
-    }
-    .disabled-section:hover::after { display:block; }
-
-    .hidden { display:none; }
+    /* simple grey-out helper */
+    .disabled-section{opacity:.25;pointer-events:none;position:relative}
+    .disabled-section[data-tip]::after{
+      content:attr(data-tip);display:none;position:absolute;top:6px;left:6px;
+      background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:.8rem}
+    .disabled-section:hover::after{display:block}
   </style>
 </head>
 
 <body>
-  <!-- ───────── nav ───────── -->
+  <!-- ───── nav ───── -->
   <nav>
     <ul>
       <li><a href="/">Home</a></li>
@@ -42,26 +27,23 @@
   </nav>
 
   <main>
-    <h1>Settings</h1>
-    <p class="subtitle">Configure your pool-pH controller.</p>
+    <h1>Pool-pH Controller — Settings</h1>
 
     <div class="settings-grid">
-      <!-- ───────── USB assignment ───────── -->
+
+      <!-- USB assignment -->
       <div class="data-container">
-        <h2>Assign USB Device</h2>
-
-        <label for="usb_device_select">Detected devices:</label>
+        <h2>USB Devices</h2>
+        <label for="usb_device_select">Detected:</label>
         <select id="usb_device_select"></select>
-
-        <button id="assign_ph_btn">Assign to&nbsp;pH&nbsp;Probe</button>
+        <button id="assign_ph_btn">Assign to pH probe</button>
         <button id="clear_ph_btn">Clear</button>
-
         <p>Status: <span id="ph_usb_status">unknown</span></p>
       </div>
 
-      <!-- ───────── pH range ───────── -->
+      <!-- pH range -->
       <div class="data-container" id="ph-range-container">
-        <h2>pH Min / Max</h2>
+        <h2>pH Range</h2>
         <form id="ph-range-form">
           <label for="ph-min">Min:</label>
           <input type="number" id="ph-min" step="0.01">
@@ -71,46 +53,41 @@
         </form>
       </div>
 
-      <!-- ───────── general dosing ───────── -->
+      <!-- General dosing -->
       <div class="data-container" id="general-settings-container">
         <h2>General Dosing</h2>
         <form id="general-settings-form">
-          <label for="ph-target">pH&nbsp;Target:</label>
+          <label for="ph-target">Target pH:</label>
           <input type="number" id="ph-target" step="0.01">
 
-          <label for="max-dosing">Max Dose (ml):</label>
+          <label for="max-dosing">Max dose (ml):</label>
           <input type="number" id="max-dosing" step="1">
 
           <label for="dosing-interval">Interval (hr):</label>
           <input type="number" id="dosing-interval" step="0.01">
 
-          <label for="system-volume">Pool Volume (gal):</label>
+          <label for="system-volume">Pool volume (gal):</label>
           <input type="number" id="system-volume" step="0.1">
 
-          <label>
-            <input type="checkbox" id="auto-dosing">
-            Auto-dosing enabled
-          </label>
-
+          <label><input type="checkbox" id="auto-dosing"> Auto-dosing</label>
           <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- ───────── dosage strength ───────── -->
+      <!-- Dosage strength -->
       <div class="data-container" id="dosage-strength-container">
         <h2>Dosage Strength</h2>
         <form id="dosage-strength-form">
-          <label for="ph-up-strength">pH-Up (ml / ΔpH):</label>
+          <label for="ph-up-strength">pH-Up (ml / ΔpH):</label>
           <input type="number" id="ph-up-strength" step="0.01">
 
           <label for="ph-down-strength">pH-Down:</label>
           <input type="number" id="ph-down-strength" step="0.01">
-
           <button type="submit">Save</button>
         </form>
       </div>
 
-      <!-- ───────── pump calibration ───────── -->
+      <!-- Pump calibration -->
       <div class="data-container" id="pump-calibration-container">
         <h2>Pump Calibration</h2>
         <form id="pump-calibration-form">
@@ -124,9 +101,9 @@
         </form>
       </div>
 
-      <!-- ───────── relay ports ───────── -->
+      <!-- Relay mapping -->
       <div class="data-container" id="relay-port-container">
-        <h2>Relay Port Mapping</h2>
+        <h2>Relay Ports</h2>
         <form id="relay-port-form">
           <label for="ph-up-relay-port">pH-Up relay:</label>
           <select id="ph-up-relay-port">
@@ -144,7 +121,7 @@
         </form>
       </div>
 
-      <!-- ───────── system info ───────── -->
+      <!-- System name -->
       <div class="data-container">
         <h2>System Info</h2>
         <form id="system-info-form">
@@ -154,66 +131,55 @@
         </form>
       </div>
 
-      <!-- ───────── notifications ───────── -->
+      <!-- Notifications -->
       <div class="data-container" id="notifications-container">
         <h2>Notifications</h2>
 
-        <!-- Discord -->
         <h3>Discord</h3>
         <form id="discord-form">
-          <label>
-            <input type="checkbox" id="discord-enabled">
-            Enable Discord
-          </label><br><br>
+          <label><input type="checkbox" id="discord-enabled"> Enable</label><br><br>
           <label for="discord-webhook-url">Webhook URL:</label>
-          <input type="text" id="discord-webhook-url" style="width:300px">
+          <input type="text" id="discord-webhook-url" style="width:280px">
           <button type="submit">Save</button>
         </form>
         <p>
-          Test message: <input type="text" id="discord-test-message" style="width:260px">
+          Test: <input type="text" id="discord-test-message" style="width:240px">
           <button id="discord-test-send-btn">Send</button>
         </p>
-        <div id="discord-test-result" style="margin-top:6px;font-size:.9rem;"></div>
+        <div id="discord-test-result" style="font-size:.9rem;"></div>
 
         <hr>
 
-        <!-- Telegram -->
         <h3>Telegram</h3>
         <form id="telegram-form">
-          <label>
-            <input type="checkbox" id="telegram-enabled">
-            Enable Telegram
-          </label><br><br>
-          <label for="telegram-bot-token">Bot&nbsp;Token:</label>
-          <input type="text" id="telegram-bot-token" style="width:300px"><br><br>
-          <label for="telegram-chat-id">Chat&nbsp;ID:</label>
-          <input type="text" id="telegram-chat-id" style="width:300px">
+          <label><input type="checkbox" id="telegram-enabled"> Enable</label><br><br>
+          <label for="telegram-bot-token">Bot token:</label>
+          <input type="text" id="telegram-bot-token" style="width:280px"><br><br>
+          <label for="telegram-chat-id">Chat ID:</label>
+          <input type="text" id="telegram-chat-id" style="width:280px">
           <button type="submit">Save</button>
         </form>
         <p>
-          Test message: <input type="text" id="telegram-test-message" style="width:260px">
+          Test: <input type="text" id="telegram-test-message" style="width:240px">
           <button id="telegram-test-send-btn">Send</button>
         </p>
-        <div id="telegram-test-result" style="margin-top:6px;font-size:.9rem;"></div>
+        <div id="telegram-test-result" style="font-size:.9rem;"></div>
       </div>
 
-      <!-- ───────── code update / restart ───────── -->
+      <!-- Code update / restart -->
       <div class="data-container">
         <h2>Code Update</h2>
         <p>Current version: <span id="program-version"></span></p>
-
-        <button id="update-only-btn">Update Code (no restart)</button>
+        <button id="update-only-btn">Update (no restart)</button>
         <div id="update-only-status"></div><br>
-
-        <button id="restart-service-btn">Restart Service</button>
+        <button id="restart-service-btn">Restart service</button>
         <div id="restart-status"></div>
       </div>
 
-      <!-- ───────── import / export ───────── -->
+      <!-- Import / export -->
       <div class="data-container">
-        <h2>Import / Export Settings</h2>
-
-        <button id="export-btn">Export current settings</button>
+        <h2>Import / Export</h2>
+        <button id="export-btn">Export settings</button>
         <hr>
         <form id="import-form">
           <input type="file" id="import-file" accept=".json">
@@ -224,7 +190,7 @@
     </div>
   </main>
 
-  <!-- pool-pH script (clean, null-safe, no garden widgets) -->
+  <!-- only one script, the clean pool-pH version -->
   <script src="{{ url_for('static', filename='settings.js') }}"></script>
 </body>
 </html>
