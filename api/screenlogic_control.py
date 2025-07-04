@@ -27,39 +27,51 @@ def _gw_host() -> str:
 # ───────────────────────── routes ──────────────────────────
 @bp.route("/control", methods=["POST"])
 def control():
-    data = request.get_json() or {}
+    data = request.get_json(force=True) or {}
     target = data.get("target")
 
     try:
         host = _gw_host()
+        gw   = ScreenLogicGateway()
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(gw.async_connect(host))
 
-        async def _do():
-            gw = ScreenLogicGateway()
-            await gw.async_connect(host)
+        # ───────── CIRCUIT ON / OFF / TOGGLE ─────────
+        if target == "circuit":
+            cid   = int(data.get("id", -1))
+            if cid < 0:
+                raise KeyError("id")
 
-            if target == "circuit":
-                cid      = int(data["id"])
-                action   = data.get("action", "toggle")
-                current  = gw.get_value("circuit", cid, "value")
-                new_state = 0 if current else 1               # default toggle
-                if action == "on":  new_state = 1
-                if action == "off": new_state = 0
-                await gw.async_set_circuit_state(cid, new_state)
+            action = data.get("action", "toggle")
+            current = gw.get_value("circuit", cid, "value") or 0
+            new_state = {"on": 1, "off": 0}.get(action, 1 - current)
+            loop.run_until_complete(gw.async_set_circuit_state(cid, new_state))
 
-            elif target == "heat":
-                body     = int(data["body"])
-                mode     = int(data["mode"])
-                setpt    = int(data["setpoint"])
-                await gw.async_set_heat_mode(body, mode)
-                await gw.async_set_heat_setpoint(body, setpt)
+        # ───────── HEAT MODE / SET-POINT ─────────
+        elif target == "heat":
+            body  = int(data.get("body", -1))
+            mode  = int(data.get("mode", 0))
+            setpt = int(data.get("setpoint", 0))
 
-            else:
-                raise ValueError(f"Unsupported target: {target}")
+            if body not in (0, 1):
+                raise KeyError("body")
+            if mode  not in (0, 1, 2, 3):
+                raise KeyError("mode")
+            if not (50 <= setpt <= 104):
+                raise KeyError("setpoint")
 
-            await gw.async_disconnect()
+            loop.run_until_complete(gw.async_set_heat_mode(body, mode))
+            loop.run_until_complete(gw.async_set_heat_setpoint(body, setpt))
 
-        asyncio.run(_do())
+        else:
+            raise ValueError(f"unsupported target {target!r}")
+
+        loop.run_until_complete(gw.async_disconnect())
         return jsonify(status="success")
 
+    except KeyError as ke:
+        return jsonify(status="failure",
+                       error=f"missing/invalid field {ke}"), 400
     except Exception as exc:
         return jsonify(status="failure", error=str(exc)), 400
