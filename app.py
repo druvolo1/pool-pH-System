@@ -186,8 +186,6 @@ def start_threads():
     screenlogic_service.start()
 
 
-# Start threads so Gunicorn sees them
-start_threads()
 
 ########################################################################
 # Register Blueprints
@@ -202,6 +200,9 @@ app.register_blueprint(debug_blueprint, url_prefix='/debug')
 app.register_blueprint(notifications_blueprint, url_prefix='/api/notifications')
 app.register_blueprint(screenlogic_bp) 
 
+
+# Start threads so Gunicorn sees them
+start_threads()
 
 ########################################################################
 # Routes
