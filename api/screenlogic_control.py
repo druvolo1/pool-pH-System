@@ -14,6 +14,12 @@ from flask import Blueprint, request, jsonify
 from screenlogicpy import ScreenLogicGateway
 from utils.settings_utils import load_settings
 
+import logging
+_log = logging.getLogger(__name__)
+
+
+
+
 bp = Blueprint("screenlogic_control", __name__, url_prefix="/api/screenlogic")
 
 # ───────────────────────── helpers ─────────────────────────
@@ -28,7 +34,7 @@ def _gw_host() -> str:
 @bp.route("/control", methods=["POST"])
 def control():
     data = request.get_json(force=True) or {}
-    log.debug(f"Received payload: {data}")
+    _log.debug(f"Received payload: {data}")
     target = data.get("target")
 
     try:
