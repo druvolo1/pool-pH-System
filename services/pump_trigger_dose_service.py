@@ -1,3 +1,4 @@
+# File: services/pump_trigger_dose_service.py
 """
 Pump-triggered auto-dosing service
 ---------------------------------
@@ -42,9 +43,8 @@ def pump_trigger_dose_loop() -> None:
                 eventlet.sleep(5)
                 continue
 
-            cfg = settings.get("pump_trigger", {})
-            pump_id     = int(cfg.get("pump_id", 0))
-            delay_min   = float(cfg.get("dose_delay_min", 15))
+            pump_id     = int(settings.get("pump_circuit", 0))
+            delay_min   = float(settings.get("delay_after_on", 15))
 
             data       = get_latest_screenlogic_data()
             pump_key   = f"pump.{pump_id}.state.value"
