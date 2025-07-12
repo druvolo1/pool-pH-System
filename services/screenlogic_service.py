@@ -75,7 +75,7 @@ class ScreenLogicService:
     def _run(self) -> None:
         while not self._stop.ready():
             cfg = load_settings().get("screenlogic", {})
-            interval = int(cfg.get("poll_interval", 5)) or 30
+            interval = int(cfg.get("poll_interval", 5)) or 5
 
             try:
                 if not cfg.get("enabled"):
