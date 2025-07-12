@@ -43,169 +43,176 @@
   <main>
     <h1>Pool-pH Controller — Settings</h1>
 
-<div class="settings-grid">
-  <!-- USB assignment -->
-  <div class="data-container">
-    <h2>USB Devices</h2>
-    <label for="usb_device_select">Detected:</label>
-    <select id="usb_device_select"></select>
-    <button id="assign_ph_btn">Assign to pH probe</button>
-    <button id="clear_ph_btn">Clear</button>
-    <p>Status: <span id="ph_usb_status">unknown</span></p>
-  </div>
+    <div class="settings-grid">
+      <!-- USB assignment -->
+      <div class="data-container">
+        <h2>USB Devices</h2>
+        <label for="usb_device_select">Detected:</label>
+        <select id="usb_device_select"></select>
+        <button id="assign_ph_btn">Assign to pH probe</button>
+        <button id="clear_ph_btn">Clear</button>
+        <p>Status: <span id="ph_usb_status">unknown</span></p>
+        <form id="relay-form">
+          <label for="relay-device">Dosing Relay Module:</label>
+          <select id="relay-device" name="relay-device">
+            <option value="">Select a device</option>
+          </select>
+          <button type="submit">Save Dosing Relay Module</button>
+        </form>
+      </div>
 
-  <!-- pH range -->
-  <div class="data-container" id="ph-range-container">
-    <h2>pH Range</h2>
-    <form id="ph-range-form">
-      <label for="ph-min">Min:</label>
-      <input type="number" id="ph-min" step="0.01">
-      <label for="ph-max">Max:</label>
-      <input type="number" id="ph-max" step="0.01">
-      <button type="submit">Save</button>
-    </form>
-  </div>
+      <!-- pH range -->
+      <div class="data-container" id="ph-range-container">
+        <h2>pH Range</h2>
+        <form id="ph-range-form">
+          <label for="ph-min">Min:</label>
+          <input type="number" id="ph-min" step="0.01">
+          <label for="ph-max">Max:</label>
+          <input type="number" id="ph-max" step="0.01">
+          <button type="submit">Save</button>
+        </form>
+      </div>
 
-  <!-- General dosing -->
-  <div class="data-container" id="general-settings-container">
-    <h2>General Dosing</h2>
-    <form id="general-settings-form">
-      <label for="ph-target">Target pH:</label>
-      <input type="number" id="ph-target" step="0.01">
-      <label for="max-dosing">Max dose (ml):</label>
-      <input type="number" id="max-dosing" step="1">
-      <label><input type="checkbox" id="auto-dosing"> Auto-dosing</label>
-      <button type="submit">Save</button>
-    </form>
-  </div>
+      <!-- General dosing -->
+      <div class="data-container" id="general-settings-container">
+        <h2>General Dosing</h2>
+        <form id="general-settings-form">
+          <label for="ph-target">Target pH:</label>
+          <input type="number" id="ph-target" step="0.01">
+          <label for="max-dosing">Max dose (ml):</label>
+          <input type="number" id="max-dosing" step="1">
+          <label><input type="checkbox" id="auto-dosing"> Auto-dosing</label>
+          <button type="submit">Save</button>
+        </form>
+      </div>
 
-  <!-- Dosage strength -->
-  <div class="data-container" id="dosage-strength-container">
-    <h2>Dosage Strength</h2>
-    <form id="dosage-strength-form">
-      <label for="ph-up-strength">pH-Up (ml / ΔpH):</label>
-      <input type="number" id="ph-up-strength" step="0.01">
-      <label for="ph-down-strength">pH-Down:</label>
-      <input type="number" id="ph-down-strength" step="0.01">
-      <button type="submit">Save</button>
-    </form>
-  </div>
+      <!-- Dosage strength -->
+      <div class="data-container" id="dosage-strength-container">
+        <h2>Dosage Strength</h2>
+        <form id="dosage-strength-form">
+          <label for="ph-up-strength">pH-Up (ml / ΔpH):</label>
+          <input type="number" id="ph-up-strength" step="0.01">
+          <label for="ph-down-strength">pH-Down:</label>
+          <input type="number" id="ph-down-strength" step="0.01">
+          <button type="submit">Save</button>
+        </form>
+      </div>
 
-  <!-- Pump calibration -->
-  <div class="data-container" id="pump-calibration-container">
-    <h2>Pump Calibration</h2>
-    <form id="pump-calibration-form">
-      <label for="pump1-calibration">pH-Up (sec/ml):</label>
-      <input type="number" id="pump1-calibration" step="0.01">
-      <label for="pump2-calibration">pH-Down:</label>
-      <input type="number" id="pump2-calibration" step="0.01">
-      <button type="submit">Save</button>
-    </form>
-  </div>
+      <!-- Pump calibration -->
+      <div class="data-container" id="pump-calibration-container">
+        <h2>Pump Calibration</h2>
+        <form id="pump-calibration-form">
+          <label for="pump1-calibration">pH-Up (sec/ml):</label>
+          <input type="number" id="pump1-calibration" step="0.01">
+          <label for="pump2-calibration">pH-Down:</label>
+          <input type="number" id="pump2-calibration" step="0.01">
+          <button type="submit">Save</button>
+        </form>
+      </div>
 
-  <!-- Relay mapping -->
-  <div class="data-container" id="relay-port-container">
-    <h2>Relay Ports</h2>
-    <form id="relay-port-form">
-      <label for="ph-up-relay-port">pH-Up relay:</label>
-      <select id="ph-up-relay-port">
-        <option value="1">Relay 1</option>
-        <option value="2">Relay 2</option>
-      </select>
-      <label for="ph-down-relay-port">pH-Down:</label>
-      <select id="ph-down-relay-port">
-        <option value="1">Relay 1</option>
-        <option value="2">Relay 2</option>
-      </select>
-      <button type="submit">Save</button>
-    </form>
-  </div>
+      <!-- Relay mapping -->
+      <div class="data-container" id="relay-port-container">
+        <h2>Relay Ports</h2>
+        <form id="relay-port-form">
+          <label for="ph-up-relay-port">pH-Up relay:</label>
+          <select id="ph-up-relay-port">
+            <option value="1">Relay 1</option>
+            <option value="2">Relay 2</option>
+          </select>
+          <label for="ph-down-relay-port">pH-Down:</label>
+          <select id="ph-down-relay-port">
+            <option value="1">Relay 1</option>
+            <option value="2">Relay 2</option>
+          </select>
+          <button type="submit">Save</button>
+        </form>
+      </div>
 
-  <!-- System name -->
-  <div class="data-container">
-    <h2>System Info</h2>
-    <form id="system-info-form">
-      <label for="system-name">Controller name:</label>
-      <input type="text" id="system-name">
-      <button type="submit">Save</button>
-    </form>
-  </div>
+      <!-- System name -->
+      <div class="data-container">
+        <h2>System Info</h2>
+        <form id="system-info-form">
+          <label for="system-name">Controller name:</label>
+          <input type="text" id="system-name">
+          <button type="submit">Save</button>
+        </form>
+      </div>
 
-  <!-- ScreenLogic integration (NEW) -->
-  <div class="data-container" id="screenlogic-container">
-    <h2>Pentair ScreenLogic</h2>
-    <form id="screenlogic-form">
-      <label><input type="checkbox" id="sl-enabled"> Enable</label>
-      <label for="sl-host">Gateway IP / Host:</label>
-      <input type="text" id="sl-host" placeholder="172.16.1.197">
-      <label for="pump-select">Pump circuit:</label>
-      <select id="pump-select">
-        <option value="0">Pump 0</option>
-        <option value="1">Pump 1</option>
-      </select>
-      <label for="delay-min">Delay after ON (min):</label>
-      <input type="number" id="delay-min" step="1">
-      <label for="system-volume">Pool volume (gal):</label>
-      <input type="number" id="system-volume" step="0.1">
-      <button type="submit" id="screenlogic-save">Save</button>
-    </form>
-  </div>
+      <!-- ScreenLogic integration (NEW) -->
+      <div class="data-container" id="screenlogic-container">
+        <h2>Pentair ScreenLogic</h2>
+        <form id="screenlogic-form">
+          <label><input type="checkbox" id="sl-enabled"> Enable</label>
+          <label for="sl-host">Gateway IP / Host:</label>
+          <input type="text" id="sl-host" placeholder="172.16.1.197">
+          <label for="pump-select">Pump circuit:</label>
+          <select id="pump-select">
+            <option value="0">Pump 0</option>
+            <option value="1">Pump 1</option>
+          </select>
+          <label for="delay-min">Delay after ON (min):</label>
+          <input type="number" id="delay-min" step="1">
+          <label for="system-volume">Pool volume (gal):</label>
+          <input type="number" id="system-volume" step="0.1">
+          <button type="submit" id="screenlogic-save">Save</button>
+        </form>
+      </div>
 
-  <!-- Notifications -->
-  <div class="data-container" id="notifications-container">
-    <h2>Notifications</h2>
-    <h3>Discord</h3>
-    <form id="discord-form">
-      <label><input type="checkbox" id="discord-enabled"> Enable</label>
-      <label for="discord-webhook-url">Webhook URL:</label>
-      <input type="text" id="discord-webhook-url" style="width:280px">
-      <button type="submit">Save</button>
-    </form>
-    <p>
-      Test: <input type="text" id="discord-test-message" style="width:240px">
-      <button id="discord-test-send-btn">Send</button>
-    </p>
-    <div id="discord-test-result" style="font-size:0.9rem;"></div>
-    <hr>
-    <h3>Telegram</h3>
-    <form id="telegram-form">
-      <label><input type="checkbox" id="telegram-enabled"> Enable</label>
-      <label for="telegram-bot-token">Bot token:</label>
-      <input type="text" id="telegram-bot-token" style="width:280px">
-      <label for="telegram-chat-id">Chat ID:</label>
-      <input type="text" id="telegram-chat-id" style="width:280px">
-      <button type="submit">Save</button>
-    </form>
-    <p>
-      Test: <input type="text" id="telegram-test-message" style="width:240px">
-      <button id="telegram-test-send-btn">Send</button>
-    </p>
-    <div id="telegram-test-result" style="font-size:0.9rem;"></div>
-  </div>
+      <!-- Notifications -->
+      <div class="data-container" id="notifications-container">
+        <h2>Notifications</h2>
+        <h3>Discord</h3>
+        <form id="discord-form">
+          <label><input type="checkbox" id="discord-enabled"> Enable</label>
+          <label for="discord-webhook-url">Webhook URL:</label>
+          <input type="text" id="discord-webhook-url" style="width:280px">
+          <button type="submit">Save</button>
+        </form>
+        <p>
+          Test: <input type="text" id="discord-test-message" style="width:240px">
+          <button id="discord-test-send-btn">Send</button>
+        </p>
+        <div id="discord-test-result" style="font-size:0.9rem;"></div>
+        <hr>
+        <h3>Telegram</h3>
+        <form id="telegram-form">
+          <label><input type="checkbox" id="telegram-enabled"> Enable</label>
+          <label for="telegram-bot-token">Bot token:</label>
+          <input type="text" id="telegram-bot-token" style="width:280px">
+          <label for="telegram-chat-id">Chat ID:</label>
+          <input type="text" id="telegram-chat-id" style="width:280px">
+          <button type="submit">Save</button>
+        </form>
+        <p>
+          Test: <input type="text" id="telegram-test-message" style="width:240px">
+          <button id="telegram-test-send-btn">Send</button>
+        </p>
+        <div id="telegram-test-result" style="font-size:0.9rem;"></div>
+      </div>
 
-  <!-- Code update / restart -->
-  <div class="data-container">
-    <h2>Code Update</h2>
-    <p>Current version: <span id="program-version"></span></p>
-    <button id="update-only-btn">Update (no restart)</button>
-    <div id="update-only-status"></div>
+      <!-- Code update / restart -->
+      <div class="data-container">
+        <h2>Code Update</h2>
+        <p>Current version: <span id="program-version"></span></p>
+        <button id="update-only-btn">Update (no restart)</button>
+        <div id="update-only-status"></div><br>
+        <button id="restart-service-btn">Restart service</button>
+        <div id="restart-status"></div>
+      </div>
 
-    <button id="restart-service-btn">Restart service</button>
-    <div id="restart-status"></div>
-  </div>
-
-  <!-- Import / export -->
-  <div class="data-container">
-    <h2>Import / Export</h2>
-    <button id="export-btn">Export settings</button>
-    <hr>
-    <form id="import-form">
-      <input type="file" id="import-file" accept=".json">
-      <button type="submit">Import</button>
-    </form>
-    <div id="import-status"></div>
-  </div>
-</div>  </main>
+      <!-- Import / export -->
+      <div class="data-container">
+        <h2>Import / Export</h2>
+        <button id="export-btn">Export settings</button>
+        <hr>
+        <form id="import-form">
+          <input type="file" id="import-file" accept=".json">
+          <button type="submit">Import</button>
+        </form>
+        <div id="import-status"></div>
+      </div>
+    </div>
+  </main>
 
   <!-- Embedded JavaScript -->
   <script>
@@ -240,22 +247,37 @@
         getJSON("/api/settings"),
       ]);
 
-      const assigned = set.usb_roles?.ph_probe ?? "";
+      const assignedPh = set.usb_roles?.ph_probe ?? "";
+      const assignedRelay = set.usb_roles?.relay ?? "";
       devSel.innerHTML = "";
       devs.forEach((d) => {
         const o = document.createElement("option");
         o.value = d.device;
         o.textContent = d.device;
-        if (d.device === assigned) o.selected = true;
+        if (d.device === assignedPh) o.selected = true;
         devSel.appendChild(o);
       });
-      if (!assigned) {
+      if (!assignedPh) {
         const opt = new Option("-- select --", "");
         opt.selected = true;
         devSel.insertBefore(opt, devSel.firstChild);
       }
-      statSp.textContent = assigned || "not assigned";
-      statSp.className = assigned ? "ok" : "warn";
+      statSp.textContent = assignedPh || "not assigned";
+      statSp.className = assignedPh ? "ok" : "warn";
+      const relayDevSel = $("relay-device");
+      relayDevSel.innerHTML = "";
+      devs.forEach((d) => {
+        const o = document.createElement("option");
+        o.value = d.device;
+        o.textContent = d.device;
+        if (d.device === assignedRelay) o.selected = true;
+        relayDevSel.appendChild(o);
+      });
+      if (!assignedRelay) {
+        const opt = new Option("-- select --", "");
+        opt.selected = true;
+        relayDevSel.insertBefore(opt, relayDevSel.firstChild);
+      }
     }
     assignBt?.addEventListener("click", async () => {
       await postJSON("/api/settings/assign_usb", {
@@ -268,6 +290,14 @@
       await postJSON("/api/settings/assign_usb", {
         role: "ph_probe",
         device: null,
+      });
+      rescanUsb();
+    });
+    $("relay-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await postJSON("/api/settings/assign_usb", {
+        role: "relay",
+        device: $("relay-device").value || null,
       });
       rescanUsb();
     });
@@ -398,4 +428,3 @@
   </script>
 </body>
 </html>
-
