@@ -20,6 +20,7 @@ _DEFAULTS = {
     "system_volume": 45.0,
     "dosage_strength": {"ph_up": 1.0, "ph_down": 1.0},
     "auto_dosing_enabled": False,
+    "pump_trigger": {"pump_id": 0, "dose_delay_min": 15},
     "time_zone": "America/New_York",
     "daylight_savings_enabled": True,
     "usb_roles": {"ph_probe": None, "relay": None},
@@ -62,11 +63,15 @@ def get_settings():
 def update_settings():
     new_settings = request.get_json() or {}
     current = load_settings()
-    auto_dosing_changed = any(k in new_settings for k in ("auto_dosing_enabled", "dosing_interval"))
+
+    dosing_keys = {"auto_dosing_enabled", "pump_trigger"}
+    auto_dosing_changed = bool(dosing_keys.intersection(new_settings.keys()))
 
     # merge relay_ports if present
     if "relay_ports" in new_settings:
         current.setdefault("relay_ports", {}).update(new_settings.pop("relay_ports"))
+    if "pump_trigger" in new_settings:
+        current.setdefault("pump_trigger", {}).update(new_settings.pop("pump_trigger"))
 
     current.update(new_settings)
     save_settings(current)

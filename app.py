@@ -163,26 +163,31 @@ def broadcast_status():
 
 def start_threads():
     settings = load_settings()
-    #system_name = settings.get("system_name", "Garden")
 
-    log_with_timestamp("Spawning broadcast_ph_readings...")
+    # Broadcast latest pH to websockets
+    log_with_timestamp("Spawning broadcast_ph_readings…")
     eventlet.spawn(broadcast_ph_readings)
 
-    log_with_timestamp("Spawning auto_dosing_loop...")
-    eventlet.spawn(auto_dosing_loop)
+    # ▶ NEW pump-trigger auto-dosing loop
+    log_with_timestamp("Spawning pump-trigger auto dosing…")
+    eventlet.spawn(pump_trigger_dose_loop)
 
+    # Serial reader
     from services.ph_service import serial_reader
-    log_with_timestamp("Spawning pH serial reader...")
+    log_with_timestamp("Spawning pH serial reader…")
     eventlet.spawn(serial_reader)
 
-    log_with_timestamp("Spawning status broadcaster...")
+    # Status broadcaster
+    log_with_timestamp("Spawning status broadcaster…")
     eventlet.spawn(broadcast_status)
 
-    log_with_timestamp("Spawning hardware error checker...")
+    # Hardware error checker
+    log_with_timestamp("Spawning hardware error checker…")
     eventlet.spawn(check_for_hardware_errors)
 
-    log_with_timestamp("Starting Screenlogic...")
+    # ScreenLogic poller
     from services.screenlogic_service import screenlogic_service
+    log_with_timestamp("Starting ScreenLogic poller…")
     screenlogic_service.start()
 
 

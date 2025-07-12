@@ -54,24 +54,30 @@
 
       <!-- General dosing -->
       <div class="data-container" id="general-settings-container">
-        <h2>General Dosing</h2>
-        <form id="general-settings-form">
-          <label for="ph-target">Target pH:</label>
-          <input type="number" id="ph-target" step="0.01">
+      <h2>General Dosing</h2>
+      <form id="general-settings-form">
+        <label for="ph-target">Target pH:</label>
+        <input type="number" id="ph-target" step="0.01">
 
-          <label for="max-dosing">Max dose (ml):</label>
-          <input type="number" id="max-dosing" step="1">
+        <label for="max-dosing">Max dose (ml):</label>
+        <input type="number" id="max-dosing" step="1">
 
-          <label for="dosing-interval">Interval (hr):</label>
-          <input type="number" id="dosing-interval" step="0.01">
+        <label for="pump-select">Pump circuit:</label>
+        <select id="pump-select">
+          <option value="0">Pump 0</option>
+          <option value="1">Pump 1</option>
+        </select>
 
-          <label for="system-volume">Pool volume (gal):</label>
-          <input type="number" id="system-volume" step="0.1">
+        <label for="delay-min">Delay after ON (min):</label>
+        <input type="number" id="delay-min" step="1">
 
-          <label><input type="checkbox" id="auto-dosing"> Auto-dosing</label>
-          <button type="submit">Save</button>
-        </form>
-      </div>
+        <label for="system-volume">Pool volume (gal):</label>
+        <input type="number" id="system-volume" step="0.1">
+
+        <label><input type="checkbox" id="auto-dosing"> Auto-dosing</label>
+        <button type="submit">Save</button>
+      </form>
+    </div>
 
       <!-- Dosage strength -->
       <div class="data-container" id="dosage-strength-container">
