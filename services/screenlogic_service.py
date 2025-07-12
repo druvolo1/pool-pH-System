@@ -17,6 +17,9 @@ from typing import Any, Dict, List
 from screenlogicpy import ScreenLogicGateway
 from utils.settings_utils import load_settings
 
+import nest_asyncio
+nest_asyncio.apply()
+
 _log = logging.getLogger(__name__)
 
 # Most-recent flattened payload

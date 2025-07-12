@@ -138,6 +138,7 @@
     /* ---- helper to POST control commands ---- */
     async function sendCommand(payload) {
       try {
+        console.log("Sending payload:", JSON.stringify(payload));
         const r = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
