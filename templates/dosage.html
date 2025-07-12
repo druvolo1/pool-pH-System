@@ -41,7 +41,9 @@
             <p><strong>Last Dose Time:</strong> <span id="last-dose-time">{{ dosage_data.last_dose_time }}</span></p>
             <p><strong>Last Dose Type:</strong> <span id="last-dose-type">{{ dosage_data.last_dose_type }}</span></p>
             <p><strong>Last Dose Amount:</strong> <span id="last-dose-amount">{{ dosage_data.last_dose_amount }}</span> ml</p>
-            <p><strong>Next Dose Time:</strong> <span id="next-dose-time">{{ dosage_data.next_dose_time }}</span></p>
+            <p><strong>Dosed Today:</strong> <span id="dosed-today">Calculating...</span></p>
+            <p><strong>Next Dose Check:</strong> Triggered by pump turning ON (after configurable delay)</p>
+            <p>Auto-dosing monitors the pump state continuously. When the selected pump turns ON, it schedules a pH check and potential dose after the delay, but only once per calendar day if pH is out of range.</p>
         </div>
 
         <!-- Wrap these in a .dosage-section so they can be flexed/responsive -->
@@ -116,7 +118,21 @@
                     document.getElementById('last-dose-time').textContent = d.last_dose_time;
                     document.getElementById('last-dose-type').textContent = d.last_dose_type;
                     document.getElementById('last-dose-amount').textContent = d.last_dose_amount;
-                    document.getElementById('next-dose-time').textContent = d.next_dose_time;
+
+                    // Compute 'Dosed Today'
+                    const lastTime = d.last_dose_time;
+                    let dosedToday = 'No';
+                    if (lastTime !== 'Never' && lastTime !== 'N/A') {
+                        const lastDate = new Date(lastTime);
+                        const today = new Date();
+                        if (lastDate.getFullYear() === today.getFullYear() &&
+                            lastDate.getMonth() === today.getMonth() &&
+                            lastDate.getDate() === today.getDate()) {
+                            dosedToday = 'Yes';
+                        }
+                    }
+                    document.getElementById('dosed-today').textContent = dosedToday;
+
                 } catch (err) {
                     console.error("Error refreshing dosage info:", err);
                 }
