@@ -34,7 +34,7 @@ _DEFAULTS = {
     "screenlogic": {           # NEW – Pentair gateway config
         "enabled": True,
         "host": "172.16.1.197",
-        "poll_interval": 30    # seconds
+        "poll_interval": 5    # seconds
     }
 }
 
