@@ -10,15 +10,16 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import threading
 import time
 from typing import Any, Dict, List
+
+import eventlet  # Added for consistency
+eventlet.monkey_patch()  # Ensure patched
 
 from screenlogicpy import ScreenLogicGateway
 from utils.settings_utils import load_settings
 
-import nest_asyncio
-nest_asyncio.apply()
+from eventlet import tpool  # For blocking async in threads
 
 _log = logging.getLogger(__name__)
 
@@ -60,51 +61,49 @@ def flatten_screenlogic(data_tree: dict) -> Dict[str, Any]:
 # ───────────────────────── ScreenLogic service class ────────────────────────
 class ScreenLogicService:
     def __init__(self) -> None:
-        self._t: threading.Thread | None = None
-        self._stop = threading.Event()
+        self._stop = eventlet.Event()  # Use eventlet Event for consistency
 
     # start / stop -----------------------------------------------------------
     def start(self) -> None:
-        if self._t and self._t.is_alive():
-            return
-        self._t = threading.Thread(target=self._run, name="ScreenLogicPoller", daemon=True)
-        self._t.start()
-        _log.info("[ScreenLogic] service thread started")
+        eventlet.spawn(self._run)  # Use eventlet.spawn like other services
+        _log.info("[ScreenLogic] service greenlet started")
 
     def stop(self) -> None:
-        self._stop.set()
+        self._stop.send()
 
     # main loop --------------------------------------------------------------
     def _run(self) -> None:
-        while not self._stop.is_set():
+        while not self._stop.ready():
             cfg = load_settings().get("screenlogic", {})
             interval = int(cfg.get("poll_interval", 30)) or 30
 
             try:
                 if not cfg.get("enabled"):
-                    time.sleep(10)
+                    eventlet.sleep(10)
                     continue
 
                 host = str(cfg.get("host", "")).strip()
                 if not host:
                     _log.warning("[ScreenLogic] enabled but no host/IP in settings")
-                    time.sleep(interval)
+                    eventlet.sleep(interval)
                     continue
 
-                async def _poll_once() -> Dict[str, Any]:
-                    gw = ScreenLogicGateway()
-                    await gw.async_connect(host)
-                    await gw.async_update()
-                    flat = flatten_screenlogic(gw.get_data())
-                    await gw.async_disconnect()
-                    return flat
+                def sync_poll() -> Dict[str, Any]:
+                    # Run async poll in a sync wrapper for tpool
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    try:
+                        gw = ScreenLogicGateway()
+                        loop.run_until_complete(gw.async_connect(host))
+                        loop.run_until_complete(gw.async_update())
+                        flat = flatten_screenlogic(gw.get_data())
+                        loop.run_until_complete(gw.async_disconnect())
+                        return flat
+                    finally:
+                        loop.close()
 
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    snapshot = loop.run_until_complete(_poll_once())
-                finally:
-                    loop.close()
+                # Run the async poll in a real thread to avoid eventlet conflicts
+                snapshot = tpool.execute(sync_poll)
 
                 _latest_data.clear()
                 _latest_data.update(snapshot)
@@ -118,7 +117,7 @@ class ScreenLogicService:
             except Exception as exc:
                 _log.warning("[ScreenLogic] poll failed: %s", exc)
 
-            time.sleep(interval)
+            eventlet.sleep(interval)
 
 
 # ───────────────────────── public API ───────────────────────────────────────
