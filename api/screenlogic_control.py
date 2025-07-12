@@ -34,6 +34,8 @@ def _gw_host() -> str:
 @bp.route("/control", methods=["POST"])
 def control():
     data = request.get_json(force=True) or {}
+    _log.debug(f"Raw content type: {request.content_type}")
+    _log.debug(f"Raw request body: {request.data}")
     _log.debug(f"Received payload: {data}")
     target = data.get("target")
 
