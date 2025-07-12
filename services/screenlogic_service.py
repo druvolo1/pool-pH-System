@@ -96,7 +96,13 @@ class ScreenLogicService:
                     await gw.async_disconnect()
                     return flat
 
-                snapshot = asyncio.run(_poll_once())
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    snapshot = loop.run_until_complete(_poll_once())
+                finally:
+                    loop.close()
+
                 _latest_data.clear()
                 _latest_data.update(snapshot)
 
