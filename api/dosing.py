@@ -28,11 +28,6 @@ def get_current_dosage_info():
     dosage_data["last_dose_type"] = auto_dose_state["last_dose_type"] or "N/A"
     dosage_data["last_dose_amount"] = auto_dose_state["last_dose_amount"]
 
-    if auto_dose_state["next_dose_time"]:
-        dosage_data["next_dose_time"] = auto_dose_state["next_dose_time"].strftime("%Y-%m-%d %H:%M:%S")
-    else:
-        dosage_data["next_dose_time"] = "Not Scheduled"
-
     return jsonify(dosage_data)
 
 @dosing_blueprint.route('/manual', methods=['POST'])

@@ -14,5 +14,3 @@ def reset_auto_dose_timer():
     auto_dose_state["last_dose_time"] = now
     auto_dose_state["last_dose_type"] = None
     auto_dose_state["last_dose_amount"] = 0.0
-    auto_dose_state["next_dose_time"] = None
-    auto_dose_state["last_interval"] = None  # Clear the last interval

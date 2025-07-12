@@ -80,56 +80,6 @@ socketio.on_namespace(StatusNamespace('/status'))
 ########################################################################
 # 3) Background tasks
 ########################################################################
-def auto_dosing_loop():
-    #from api.settings import load_settings
-    log_with_timestamp("Inside auto dosing loop")
-
-    while True:
-        try:
-            settings = load_settings()
-            auto_enabled = settings.get("auto_dosing_enabled", False)
-            interval_hours = float(settings.get("dosing_interval", 0))
-
-            if not auto_enabled or interval_hours <= 0:
-                reset_auto_dose_timer()
-                eventlet.sleep(5)
-                continue
-
-            now = datetime.now()
-            if auto_dose_state.get("last_interval") != interval_hours:
-                auto_dose_state["last_interval"] = interval_hours
-                auto_dose_state["next_dose_time"] = now + timedelta(hours=interval_hours)
-                log_with_timestamp(
-                    f"Interval changed; next dose time reset to {auto_dose_state['next_dose_time']}"
-                )
-
-            if not auto_dose_state.get("next_dose_time"):
-                auto_dose_state["next_dose_time"] = now + timedelta(hours=interval_hours)
-                log_with_timestamp(f"Next dose time initialized to {auto_dose_state['next_dose_time']}")
-
-            if now >= auto_dose_state["next_dose_time"]:
-                dose_type, dose_amount = perform_auto_dose(settings)
-                if dose_amount > 0:
-                    auto_dose_state["last_dose_time"] = now
-                    auto_dose_state["last_dose_type"] = dose_type
-                    auto_dose_state["last_dose_amount"] = dose_amount
-                    auto_dose_state["next_dose_time"] = now + timedelta(hours=interval_hours)
-                    log_with_timestamp(
-                        f"Auto-dose performed: {dose_type} {dose_amount} ml; "
-                        f"next dose at {auto_dose_state['next_dose_time']}"
-                    )
-                else:
-                    auto_dose_state["next_dose_time"] = now + timedelta(hours=interval_hours)
-                    log_with_timestamp(
-                        f"No dose performed; next dose rescheduled for {auto_dose_state['next_dose_time']}"
-                    )
-
-            eventlet.sleep(5)
-
-        except Exception as e:
-            log_with_timestamp(f"[AutoDosing] Error: {e}")
-            eventlet.sleep(5)
-
 def broadcast_ph_readings():
     log_with_timestamp("Inside function for broadcasting pH readings")
     last_emitted_value = None
@@ -264,11 +214,6 @@ def dosage_page():
     dosage_data["last_dose_type"] = auto_dose_state.get("last_dose_type") or "N/A"
     dosage_data["last_dose_amount"] = auto_dose_state.get("last_dose_amount")
 
-    if auto_dose_state.get("next_dose_time"):
-        dosage_data["next_dose_time"] = auto_dose_state["next_dose_time"].strftime("%Y-%m-%d %H:%M:%S")
-    else:
-        dosage_data["next_dose_time"] = "Not Scheduled"
-
     return render_template('dosage.html', dosage_data=dosage_data)
 
 @app.route('/api/dosage/manual', methods=['POST'])
@@ -285,7 +230,6 @@ def api_manual_dosage():
     auto_dose_state["last_dose_time"] = datetime.now()
     auto_dose_state["last_dose_type"] = dispense_type
     auto_dose_state["last_dose_amount"] = amount
-    auto_dose_state["next_dose_time"] = None
 
     return jsonify({"status": "success", "message": f"Dispensed {amount} ml of pH {dispense_type}."})
 

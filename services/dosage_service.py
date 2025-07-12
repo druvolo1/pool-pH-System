@@ -63,8 +63,8 @@ def get_dosage_info():
         "feedback_down": feedback_down
     }
 
-def manual_dispense(dispense_type, amount):
-    print(f"[Manual Dispense] Requested to dispense {amount} ml of pH {dispense_type.capitalize()}.")
+def manual_dispense(dispense_type, amount_ml):
+    print(f"[Manual Dispense] Requested to dispense {amount_ml} ml of pH {dispense_type.capitalize()}.")
     return True
 
 # -----------------------------
