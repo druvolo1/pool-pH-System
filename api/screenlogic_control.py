@@ -46,7 +46,7 @@ def control():
             action = data.get("action", "toggle")
             current = gw.get_value("circuit", cid, "value") or 0
             new_state = {"on": 1, "off": 0}.get(action, 1 - current)
-            loop.run_until_complete(gw.async_set_circuit_state(cid, new_state))
+            loop.run_until_complete(gw.async_set_circuit(cid, new_state))
 
         # ───────── HEAT MODE / SET-POINT ─────────
         elif target == "heat":
@@ -62,7 +62,7 @@ def control():
                 raise KeyError("setpoint")
 
             loop.run_until_complete(gw.async_set_heat_mode(body, mode))
-            loop.run_until_complete(gw.async_set_heat_setpoint(body, setpt))
+            loop.run_until_complete(gw.async_set_heat_temp(body, setpt))
 
         else:
             raise ValueError(f"unsupported target {target!r}")
