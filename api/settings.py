@@ -17,7 +17,7 @@ _DEFAULTS = {
     "ph_target": 7.5,
     "max_dosing_amount": 5,
     "dosing_interval": 1.0,
-    "system_volume": 45.0,
+    "system_volume": 35000.0,
     "dosage_strength": {"ph_up": 1.0, "ph_down": 1.0},
     "auto_dosing_enabled": False,
     "pump_trigger": {"pump_id": 0, "dose_delay_min": 15},

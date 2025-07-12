@@ -7,11 +7,26 @@
   <!-- Styles & basic libs -->
   <link rel="stylesheet" href="/static/style.css">
   <style>
-    .disabled-section{opacity:.25;pointer-events:none;position:relative}
-    .disabled-section[data-tip]::after{
-      content:attr(data-tip);display:none;position:absolute;top:6px;left:6px;
-      background:#333;color:#fff;padding:4px 8px;border-radius:4px;font-size:.8rem}
-    .disabled-section:hover::after{display:block}
+    .disabled-section {
+      opacity: 0.25;
+      pointer-events: none;
+      position: relative;
+    }
+    .disabled-section[data-tip]::after {
+      content: attr(data-tip);
+      display: none;
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: #333;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .disabled-section:hover::after {
+      display: block;
+    }
   </style>
 </head>
 
@@ -29,7 +44,6 @@
     <h1>Pool-pH Controller — Settings</h1>
 
     <div class="settings-grid">
-
       <!-- USB assignment -->
       <div class="data-container">
         <h2>USB Devices</h2>
@@ -151,7 +165,7 @@
           Test: <input type="text" id="discord-test-message" style="width:240px">
           <button id="discord-test-send-btn">Send</button>
         </p>
-        <div id="discord-test-result" style="font-size:.9rem;"></div>
+        <div id="discord-test-result" style="font-size:0.9rem;"></div>
         <hr>
         <h3>Telegram</h3>
         <form id="telegram-form">
@@ -166,7 +180,7 @@
           Test: <input type="text" id="telegram-test-message" style="width:240px">
           <button id="telegram-test-send-btn">Send</button>
         </p>
-        <div id="telegram-test-result" style="font-size:.9rem;"></div>
+        <div id="telegram-test-result" style="font-size:0.9rem;"></div>
       </div>
 
       <!-- Code update / restart -->
@@ -197,11 +211,13 @@
   <script>
     /* ───────── helpers ───────── */
     const $ = (id) => document.getElementById(id);
+
     async function getJSON(url) {
       const r = await fetch(url);
       if (!r.ok) throw new Error(`${url} → HTTP ${r.status}`);
       return r.json();
     }
+
     async function postJSON(url, body) {
       const r = await fetch(url, {
         method: "POST",
@@ -213,10 +229,10 @@
     }
 
     /* ───────── USB helper ───────── */
-    const devSel   = $("usb_device_select");
+    const devSel = $("usb_device_select");
     const assignBt = $("assign_ph_btn");
-    const clearBt  = $("clear_ph_btn");
-    const statSp   = $("ph_usb_status");
+    const clearBt = $("clear_ph_btn");
+    const statSp = $("ph_usb_status");
 
     async function rescanUsb() {
       const [devs, set] = await Promise.all([
@@ -239,7 +255,7 @@
         devSel.insertBefore(opt, devSel.firstChild);
       }
       statSp.textContent = assigned || "not assigned";
-      statSp.className   = assigned ? "ok" : "warn";
+      statSp.className = assigned ? "ok" : "warn";
     }
     assignBt?.addEventListener("click", async () => {
       await postJSON("/api/settings/assign_usb", {
@@ -249,17 +265,20 @@
       rescanUsb();
     });
     clearBt?.addEventListener("click", async () => {
-      await postJSON("/api/settings/assign_usb", { role: "ph_probe", device: null });
+      await postJSON("/api/settings/assign_usb", {
+        role: "ph_probe",
+        device: null,
+      });
       rescanUsb();
     });
 
     /* ───────── form-save helpers ───────── */
-    function floatOrNull(v)  { return v === "" ? null : parseFloat(v); }
-    function intOrNull(v)    { return v === "" ? null : parseInt(v, 10); }
+    function floatOrNull(v) { return v === "" ? null : parseFloat(v); }
+    function intOrNull(v) { return v === "" ? null : parseInt(v, 10); }
 
     async function saveAndRefresh(payload) {
       await postJSON("/api/settings", payload);
-      loadPage();                    // repopulate with fresh values
+      loadPage(); // repopulate with fresh values
     }
 
     /* ───────── populate entire page ───────── */
@@ -271,15 +290,15 @@
       $("ph-max").value = s.ph_range?.max ?? "";
 
       // general dosing
-      $("ph-target").value       = s.ph_target         ?? "";
-      $("max-dosing").value      = s.max_dosing_amount ?? "";
-      $("system-volume").value   = s.system_volume     ?? "";
-      $("pump-select").value     = s.pump_circuit      ?? "0"; // Added
-      $("delay-min").value       = s.delay_after_on    ?? "";  // Added
-      $("auto-dosing").checked   = !!s.auto_dosing_enabled;
+      $("ph-target").value = s.ph_target ?? "";
+      $("max-dosing").value = s.max_dosing_amount ?? "";
+      $("system-volume").value = s.system_volume ?? "";
+      $("pump-select").value = s.pump_circuit ?? "0";
+      $("delay-min").value = s.delay_after_on ?? 0;
+      $("auto-dosing").checked = !!s.auto_dosing_enabled;
 
       // dosage strength
-      $("ph-up-strength").value   = s.dosage_strength?.ph_up   ?? "";
+      $("ph-up-strength").value = s.dosage_strength?.ph_up ?? "";
       $("ph-down-strength").value = s.dosage_strength?.ph_down ?? "";
 
       // pump calibration
@@ -287,7 +306,7 @@
       $("pump2-calibration").value = s.pump_calibration?.pump2 ?? "";
 
       // relay ports
-      $("ph-up-relay-port").value   = s.relay_ports?.ph_up   ?? 1;
+      $("ph-up-relay-port").value = s.relay_ports?.ph_up ?? 1;
       $("ph-down-relay-port").value = s.relay_ports?.ph_down ?? 2;
 
       // system name
@@ -295,7 +314,7 @@
 
       // ScreenLogic
       $("sl-enabled").checked = !!s.screenlogic?.enabled;
-      $("sl-host").value      = s.screenlogic?.host ?? "";
+      $("sl-host").value = s.screenlogic?.host ?? "";
 
       // program version
       const pv = $("program-version");
@@ -319,8 +338,8 @@
         ph_target: floatOrNull($("ph-target").value),
         max_dosing_amount: floatOrNull($("max-dosing").value),
         system_volume: floatOrNull($("system-volume").value),
-        pump_circuit: $("pump-select").value, // Added
-        delay_after_on: intOrNull($("delay-min").value), // Added
+        pump_circuit: $("pump-select").value,
+        delay_after_on: intOrNull($("delay-min").value),
         auto_dosing_enabled: $("auto-dosing").checked,
       });
     });
@@ -329,7 +348,7 @@
       e.preventDefault();
       saveAndRefresh({
         dosage_strength: {
-          ph_up:   floatOrNull($("ph-up-strength").value),
+          ph_up: floatOrNull($("ph-up-strength").value),
           ph_down: floatOrNull($("ph-down-strength").value),
         },
       });
@@ -349,7 +368,7 @@
       e.preventDefault();
       saveAndRefresh({
         relay_ports: {
-          ph_up:   intOrNull($("ph-up-relay-port").value),
+          ph_up: intOrNull($("ph-up-relay-port").value),
           ph_down: intOrNull($("ph-down-relay-port").value),
         },
       });
