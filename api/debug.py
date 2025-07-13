@@ -17,7 +17,8 @@ def load_debug_settings():
             "water_level_service": False,
             "power_control_service": False,
             "valve_relay_service": False,
-            "notifications": False
+            "notifications": False,
+            "autodose": False
         }
 
 def save_debug_settings(settings):

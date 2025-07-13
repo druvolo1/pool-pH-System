@@ -1,50 +1,43 @@
 # File: services/log_service.py
-import csv
+import json
 import os
 from datetime import datetime
 
 # Define the log directory and file
 LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'logs')
-DOSING_LOG_FILE = os.path.join(LOG_DIR, 'dosing_log.csv')
+SENSOR_LOG_FILE = os.path.join(LOG_DIR, 'sensor_log.jsonl')
 
-def ensure_log_file_exists(log_file, headers):
+def ensure_log_dir_exists():
     """
-    Ensures the specified log file exists and creates it with the given headers if it doesn't.
-    This can be used for different log files in the future.
+    Ensures the log directory exists.
     """
-    if not os.path.exists(log_file):
-        os.makedirs(LOG_DIR, exist_ok=True)
-        with open(log_file, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(headers)
+    os.makedirs(LOG_DIR, exist_ok=True)
+
+def log_event(data_dict):
+    """
+    Logs an event as a JSON object on a new line in the JSONL file.
+    Always includes 'timestamp'; add sensor keys/values as needed.
+    Example: log_event({'ph': 7.2, 'dose_type': 'up', 'dose_amount_ml': 5.0})
+    """
+    ensure_log_dir_exists()
+    data_dict['timestamp'] = datetime.now().isoformat()
+    with open(SENSOR_LOG_FILE, 'a') as f:
+        f.write(json.dumps(data_dict) + '\n')
 
 def log_dosing_event(ph, dose_type, dose_amount_ml):
     """
-    Logs a dosing event to the dosing CSV file.
-    In the future, additional logging functions for other sensors or events can be added here,
-    potentially writing to separate CSV files or a unified log with event types.
+    Logs a dosing event (as a specific type of sensor event).
     """
-    headers = ['timestamp', 'ph', 'dose_type', 'dose_amount_ml']
-    ensure_log_file_exists(DOSING_LOG_FILE, headers)
-    timestamp = datetime.now().isoformat()
-    with open(DOSING_LOG_FILE, 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([timestamp, ph, dose_type, dose_amount_ml])
+    log_event({
+        'event_type': 'dosing',
+        'ph': ph,
+        'dose_type': dose_type,
+        'dose_amount_ml': dose_amount_ml
+    })
 
-# Future expansion example:
-# def log_sensor_data(sensor_name, value, additional_info=None):
-#     """
-#     Logs sensor data to a separate sensor_log.csv or unified log.
-#     """
-#     headers = ['timestamp', 'sensor_name', 'value']
-#     if additional_info:
-#         headers.extend(additional_info.keys())
-#     sensor_log_file = os.path.join(LOG_DIR, 'sensor_log.csv')
-#     ensure_log_file_exists(sensor_log_file, headers)
-#     timestamp = datetime.now().isoformat()
-#     row = [timestamp, sensor_name, value]
-#     if additional_info:
-#         row.extend(additional_info.values())
-#     with open(sensor_log_file, 'a', newline='') as f:
-#         writer = csv.writer(f)
-#         writer.writerow(row)
+# Future: Log other sensors
+# def log_sensor_reading(sensor_name, value, additional_data=None):
+#     data = {'event_type': 'sensor', 'sensor_name': sensor_name, 'value': value}
+#     if additional_data:
+#         data.update(additional_data)
+#     log_event(data)
