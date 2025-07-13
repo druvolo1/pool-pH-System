@@ -4,6 +4,7 @@ import eventlet
 from services.ph_service import get_latest_ph_reading
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from api.settings import load_settings
+from services.log_service import log_dosing_event
 
 def get_dosage_info():
     current_ph = get_latest_ph_reading()
@@ -64,7 +65,9 @@ def get_dosage_info():
     }
 
 def manual_dispense(dispense_type, amount_ml):
-    print(f"[Manual Dispense] Requested to dispense {amount_ml} ml of pH {dispense_type.capitalize()}.")
+    current_ph = get_latest_ph_reading() or 'N/A'
+    print(f"[Dispense] Dispensed {amount_ml} ml of pH {dispense_type.capitalize()}. Current pH: {current_ph}.")
+    log_dosing_event(current_ph, dispense_type, amount_ml)
     return True
 
 # -----------------------------
