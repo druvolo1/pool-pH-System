@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 
 # Define the log directory and file
-LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'data\logs')
+LOG_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'logs')
 DOSING_LOG_FILE = os.path.join(LOG_DIR, 'dosing_log.csv')
 
 def ensure_log_file_exists(log_file, headers):
