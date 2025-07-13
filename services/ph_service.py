@@ -105,7 +105,6 @@ def parse_buffer(ser):
     jump_threshold = settings.get("ph_jump_threshold", 1.0)  # Configurable
     median_window_size = settings.get("ph_median_window", 5)  # Configurable
     stability_threshold = settings.get("ph_stability_threshold", 0.2)  # New: configurable, increased to 0.2
-    ph_median_window = deque(maxlen=median_window_size)
 
     if last_sent_command is None and not command_queue.empty():
         next_cmd = command_queue.get()
