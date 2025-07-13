@@ -92,7 +92,7 @@ def parse_buffer(ser):
       * If 0.0 or 14.0 => unrealistic reading => report_condition_error
       * If <1.0 => ignore
       * If jump > threshold (configurable, default 1.0) => track big jumps and possibly report_condition_error for "unstable_readings"
-      * Apply median filter over window (default 5) for smoothing
+      * Apply median filter over window (default 3) for smoothing
       * If out of recommended range => report_condition_error for "out_of_range"
       * Else mark the reading "ok"
     """
@@ -103,7 +103,8 @@ def parse_buffer(ser):
 
     settings = load_settings()  # Load once per parse cycle for configs
     jump_threshold = settings.get("ph_jump_threshold", 1.0)  # Configurable
-    median_window_size = settings.get("ph_median_window", 5)  # Configurable
+    median_window_size = settings.get("ph_median_window", 3)  # Reduced default to 3 for faster startup
+    stability_threshold = settings.get("ph_stability_threshold", 0.2)  # New: configurable, increased to 0.2
     ph_median_window = deque(maxlen=median_window_size)  # Adjust if changed
 
     if last_sent_command is None and not command_queue.empty():
@@ -208,10 +209,18 @@ def parse_buffer(ser):
             # 3c) Apply median filter for smoothing (new: add to window, take median)
             ph_median_window.append(ph_value)
             if len(ph_median_window) < median_window_size:
-                log_with_timestamp(f"[DEBUG] Building median window ({len(ph_median_window)}/{median_window_size}); skipping for now.")
-                continue
+                log_with_timestamp(f"[DEBUG] Building median window ({len(ph_median_window)}/{median_window_size}); holding.")
+                return  # Changed: Don't continue; just hold until full (avoids partial processing)
             filtered_ph = sorted(ph_median_window)[median_window_size // 2]  # Median
             log_with_timestamp(f"[DEBUG] Filtered pH (median of {median_window_size}): {filtered_ph}")
+
+            # 3e) Stability check: Ensure last 3 vary by <0.1 (new, for noise per datasheet)
+            if len(ph_median_window) >= 3:
+                recent_3 = list(ph_median_window)[-3:]
+                variance = max(recent_3) - min(recent_3)
+                if variance > stability_threshold:
+                    log_with_timestamp(f"[DEBUG] Discarded unstable reading (var {variance:.2f} > {stability_threshold}): {recent_3}")
+                    continue
 
             # 3d) Compare to old_ph_value for big jumps (using filtered value)
             if old_ph_value is None:
@@ -238,13 +247,6 @@ def parse_buffer(ser):
             else:
                 if old_ph_value is None:
                     set_status("ph_probe", "probe_health", "ok", "First valid pH reading received.")
-
-            # 3e) Stability check: Ensure last 3 vary by <0.1 (new, for noise per datasheet)
-            if len(ph_median_window) >= 3:
-                recent_3 = list(ph_median_window)[-3:]
-                if max(recent_3) - min(recent_3) > 0.1:
-                    log_with_timestamp(f"[DEBUG] Unstable recent readings (var >0.1): {recent_3}; discarding.")
-                    continue
 
             # Actually store the new reading
             with ph_lock:
