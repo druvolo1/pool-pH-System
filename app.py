@@ -246,7 +246,9 @@ def device_timezones():
 def notifications_page():
     return render_template('notifications.html')
 
-
+@app.route('/logs')
+def logs_page():
+    return render_template('logs.html')
 
 ########################################################################
 # MAIN
