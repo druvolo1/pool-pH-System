@@ -210,7 +210,7 @@ def parse_buffer(ser):
             ph_median_window.append(ph_value)
             if len(ph_median_window) < median_window_size:
                 log_with_timestamp(f"[DEBUG] Building median window ({len(ph_median_window)}/{median_window_size}); holding.")
-                return  # Changed: Don't continue; just hold until full (avoids partial processing)
+                continue  # Changed back to continue to process full buffer
             filtered_ph = sorted(ph_median_window)[median_window_size // 2]  # Median
             log_with_timestamp(f"[DEBUG] Filtered pH (median of {median_window_size}): {filtered_ph}")
 
