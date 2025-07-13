@@ -33,7 +33,7 @@ _DEFAULTS = {
     "telegram_chat_id": "",
     "ph_jump_threshold": 1.0,
     "ph_median_window": 3,
-    "ph_stability_threshold": 0.2
+    "ph_stability_threshold": 0.2,
     "screenlogic": {           # NEW – Pentair gateway config
         "enabled": True,
         "host": "172.16.1.197",
