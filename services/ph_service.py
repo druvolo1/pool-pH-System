@@ -92,7 +92,7 @@ def parse_buffer(ser):
       * If 0.0 or 14.0 => unrealistic reading => report_condition_error
       * If <1.0 => ignore
       * If jump > threshold (configurable, default 1.0) => track big jumps and possibly report_condition_error for "unstable_readings"
-      * Optional median filter and stability check (disabled by default to restore old behavior)
+      * Apply median filter over window (default 5) for smoothing
       * If out of recommended range => report_condition_error for "out_of_range"
       * Else mark the reading "ok"
     """
@@ -103,10 +103,8 @@ def parse_buffer(ser):
 
     settings = load_settings()  # Load once per parse cycle for configs
     jump_threshold = settings.get("ph_jump_threshold", 1.0)  # Configurable
-    use_median_filter = settings.get("ph_use_median_filter", False)  # New: default False to restore old
-    median_window_size = settings.get("ph_median_window", 5) if use_median_filter else 1
-    use_stability_check = settings.get("ph_use_stability_check", False)  # New: default False
-    stability_threshold = settings.get("ph_stability_threshold", 0.1) if use_stability_check else float('inf')
+    median_window_size = settings.get("ph_median_window", 5)  # Configurable
+    stability_threshold = settings.get("ph_stability_threshold", 0.2)  # New: configurable, increased to 0.2
     ph_median_window = deque(maxlen=median_window_size)
 
     if last_sent_command is None and not command_queue.empty():
@@ -125,7 +123,7 @@ def parse_buffer(ser):
         log_with_timestamp(f"[DEBUG] parse_buffer: got line '{line}'")
 
         # ---------------------------------------------------------
-        # 1) Check for response codes (improvement kept)
+        # 1) Check for response codes (expanded from datasheet)
         # ---------------------------------------------------------
         if line in RESPONSE_CODES:
             if last_sent_command:
@@ -134,6 +132,7 @@ def parse_buffer(ser):
                     report_condition_error("ph_probe", "command_error", f"Error response for command '{last_sent_command}'")
                 elif line in {"*OV", "*UV"}:
                     report_condition_error("ph_probe", "voltage_issue", f"Voltage error: {line}")
+                # Add more specific alerts as needed
                 last_sent_command = None
             else:
                 log_with_timestamp(f"[DEBUG] parse_buffer: unexpected '{line}' (no command in progress)")
@@ -146,7 +145,7 @@ def parse_buffer(ser):
             continue
 
         # ---------------------------------------------------------
-        # 2) Check for slope data lines like "?SLOPE,110.2,92.1,4.67" (improvement kept)
+        # 2) Check for slope data lines like "?SLOPE,110.2,92.1,4.67"
         # ---------------------------------------------------------
         if line.upper().startswith("?SLOPE,"):
             log_with_timestamp(f"[DEBUG] parse_buffer got slope line: {line}")
@@ -187,73 +186,75 @@ def parse_buffer(ser):
 
         # ---------------------------------------------------------
         # 3) Otherwise, assume it might be a numeric pH reading
+        #    but first check the format with stricter regex:
         # ---------------------------------------------------------
         if not PH_FLOAT_REGEX.match(line):
             log_with_timestamp(f"[DEBUG] parse_buffer ignoring line '{line}': does not match PH_FLOAT_REGEX")
             continue
 
         try:
-            ph_value = round(float(line), 2)
+            ph_value = round(float(line), 3)  # Datasheet: up to 3 decimals
             set_status("ph_probe", "reading", "ok", "Receiving readings.")
             log_with_timestamp(f"[DEBUG] parse_buffer: recognized numeric pH => {ph_value}")
 
-            # 3a) Check for "unrealistic reading"
+            # 3a) Check for "unrealistic reading" (per datasheet, pH 0/14 are edges but possible; flag persistent)
             if ph_value == 0 or ph_value == 14:
+                report_condition_error("ph_probe", "unrealistic_reading", f"Unrealistic pH: {ph_value}")
                 continue
 
-            # 3b) If <1.0, skip (treat as noise)
+            # 3b) If <1.0, skip (treat as noise, per your code)
             if ph_value < 1.0:
                 raise ValueError(f"Ignoring pH <1.0 (noise?). Got {ph_value}")
 
-            # Optional median filter (if enabled)
-            if use_median_filter:
-                ph_median_window.append(ph_value)
-                if len(ph_median_window) < median_window_size:
-                    log_with_timestamp(f"[DEBUG] Building median window ({len(ph_median_window)}/{median_window_size}); skipping for now.")
-                    continue
-                ph_value = sorted(ph_median_window)[median_window_size // 2]  # Median
-                log_with_timestamp(f"[DEBUG] Filtered pH (median of {median_window_size}): {ph_value}")
+            # 3c) Apply median filter for smoothing (new: add to window, take median)
+            ph_median_window.append(ph_value)
+            if len(ph_median_window) < median_window_size:
+                log_with_timestamp(f"[DEBUG] Building median window ({len(ph_median_window)}/{median_window_size}); holding.")
+                return  # Changed: Don't continue; just hold until full (avoids partial processing)
+            filtered_ph = sorted(ph_median_window)[median_window_size // 2]  # Median
+            log_with_timestamp(f"[DEBUG] Filtered pH (median of {median_window_size}): {filtered_ph}")
 
-            # Optional stability check (if enabled)
-            if use_stability_check and len(ph_median_window) >= 3:
+            # 3e) Stability check: Ensure last 3 vary by <0.1 (new, for noise per datasheet)
+            if len(ph_median_window) >= 3:
                 recent_3 = list(ph_median_window)[-3:]
-                if max(recent_3) - min(recent_3) > stability_threshold:
-                    log_with_timestamp(f"[DEBUG] Unstable recent readings (var >{stability_threshold}): {recent_3}; skipping.")
+                variance = max(recent_3) - min(recent_3)
+                if variance > stability_threshold:
+                    log_with_timestamp(f"[DEBUG] Discarded unstable reading (var {variance:.2f} > {stability_threshold}): {recent_3}")
                     continue
 
-            # 3c) Compare to old_ph_value for big jumps
+            # 3d) Compare to old_ph_value for big jumps (using filtered value)
             if old_ph_value is None:
                 delta = 0.0
             else:
-                delta = abs(ph_value - old_ph_value)
+                delta = abs(filtered_ph - old_ph_value)
 
             log_with_timestamp(f"[DEBUG] parse_buffer: old_ph_value={old_ph_value}, delta={delta:.2f}")
 
-            if old_ph_value is not None and delta > 1.0:
+            if old_ph_value is not None and delta > jump_threshold:
                 now = datetime.now()
                 ph_jumps.append(now)
                 cutoff = now - timedelta(seconds=60)
                 ph_jumps = [t for t in ph_jumps if t >= cutoff]
 
-                old_ph_value = ph_value
-                with ph_lock:
-                    latest_ph_value = ph_value
+                if len(ph_jumps) > 5:  # Threshold for "too many jumps"
+                    report_condition_error("ph_probe", "persistent_unstable_readings", f"{len(ph_jumps)} big jumps (> {jump_threshold}) in last 60s.")
 
-                continue
-            else:
-                if old_ph_value is None:
-                    set_status("ph_probe", "probe_health", "ok", "First valid pH reading received.")
+                log_with_timestamp(f"[DEBUG] Ignored jump (delta {delta:.2f} > {jump_threshold})")
+                continue  # Fully ignore: no update
+
+            # If no jump, proceed
+            old_ph_value = filtered_ph
 
             # Actually store the new reading
             with ph_lock:
-                latest_ph_value = ph_value
-                log_with_timestamp(f"Accepted new pH reading: {ph_value}")
+                latest_ph_value = filtered_ph
+                log_with_timestamp(f"Accepted new pH reading: {filtered_ph}")
 
-            old_ph_value = ph_value
+            old_ph_value = filtered_ph
             last_read_time = datetime.now()
 
             # --- Maintain rolling window of last 20 readings ---
-            ph_recent_values.append(ph_value)
+            ph_recent_values.append(filtered_ph)
             if len(ph_recent_values) > PH_ROLLING_WINDOW:
                 ph_recent_values.pop(0)
 
@@ -287,6 +288,8 @@ def parse_buffer(ser):
 
     if buffer:
         log_with_timestamp(f"[DEBUG] leftover buffer: {buffer!r}")
+    if len(buffer) > MAX_BUFFER_LENGTH // 2:  # Warn if growing
+        log_with_timestamp("[DEBUG] Buffer growing large; possible missing terminators due to noise.")
 
 def serial_reader():
     global ser, buffer, latest_ph_value, old_ph_value, last_read_time
