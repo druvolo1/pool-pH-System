@@ -157,9 +157,6 @@ app.register_blueprint(notifications_blueprint, url_prefix='/api/notifications')
 app.register_blueprint(screenlogic_bp) 
 
 
-# Start threads so Gunicorn sees them
-start_threads()
-
 ########################################################################
 # Routes
 ########################################################################
