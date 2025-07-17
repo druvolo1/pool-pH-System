@@ -294,7 +294,7 @@ def serial_reader():
     global ser, buffer, latest_ph_value, old_ph_value, last_read_time
 
     print("DEBUG: Entered serial_reader() at all...")
-    eventlet.sleep(20)  # Add 5-second delay for USB initialization
+    #eventlet.sleep(20)  # Add 5-second delay for USB initialization
     consecutive_fails = 0              # times we failed to open the port overall
     consecutive_read_errors = 0        # times read() returned zero bytes
     consecutive_fatal_exceptions = 0   # times OSError / SerialException in a row
