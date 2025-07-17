@@ -1,9 +1,17 @@
 import eventlet
+import subprocess  # Add this import
 
 def post_fork(server, worker):
     # Apply monkey_patch here (per-worker, after fork)
     eventlet.monkey_patch()
     print("[WSGI] Eventlet monkey-patched in worker.")
+
+    # Force USB rescan to ensure devices are detected
+    try:
+        subprocess.run(["sudo", "udevadm", "trigger", "--action=add", "--subsystem-match=usb"], check=True)
+        print("[WSGI] USB rescan triggered successfully.")
+    except Exception as e:
+        print(f"[WSGI] Error triggering USB rescan: {e}")
 
     print("[WSGI] Initializing worker process. Flushing Avahi, starting threads, and registering mDNS...")
 
@@ -16,7 +24,7 @@ def post_fork(server, worker):
         # Load current system_name
         from utils.settings_utils import load_settings
         s = load_settings()
-        system_name = s.get("system_name", "Garden")
+        system_name = s.get("system_name", "Pool")
 
         # mDNS registration code (uncomment as needed)
         #register_mdns_pc_hostname(system_name, service_port=8000)
