@@ -1,6 +1,6 @@
 #!/bin/bash
 # garden_update.sh
-# This script pulls the latest code & dependencies, then restarts garden.service.
+# This script pulls the latest code & dependencies, then restarts pH.service.
 # Using "restart" means the app only goes offline briefly at the very end.
 
 # Figure out which directory this script resides in:
@@ -21,7 +21,7 @@ git pull
 echo "[$(date)] Installing dependencies..."
 pip install -r requirements.txt
 
-echo "[$(date)] Restarting garden.service..."
-sudo systemctl restart garden.service
+echo "[$(date)] Restarting pH.service..."
+sudo systemctl restart pH.service
 
 echo "[$(date)] Update script finished successfully."

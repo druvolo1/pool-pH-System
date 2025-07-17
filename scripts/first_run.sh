@@ -3,19 +3,19 @@ import os
 import subprocess
 import sys
 
-SERVICE_PATH = "/etc/systemd/system/garden.service"
+SERVICE_PATH = "/etc/systemd/system/pH.service"
 
 SERVICE_CONTENT = """[Unit]
-Description=Garden Gunicorn Service
+Description=pH Gunicorn Service
 After=network.target
 
 [Service]
 # Adjust 'User=' to whichever user should own/run the garden process
 User=dave
-WorkingDirectory=/home/dave/garden
+WorkingDirectory=/home/dave/pool-pH-System
 
 # Use bash so we can 'source' the venv
-ExecStart=/bin/bash -c 'cd /home/dave/garden && source venv/bin/activate && gunicorn -w 1 -k eventlet wsgi:app --bind 0.0.0.0:8000 --log-level=debug'
+ExecStart=/bin/bash -c 'cd /home/dave/pool-pH-System && source venv/bin/activate && gunicorn --config gunicorn_config.py -w 1 -k eventlet wsgi:app --bind 0.0.0.0:8000 --log-level=debug'
 
 # Automatically restart if it crashes
 Restart=always
@@ -54,7 +54,7 @@ def main():
     # 4) Create & activate a virtual environment
     if not os.path.isdir("/home/dave/garden/venv"):
         print("\n=== Creating virtual environment ===")
-        run_command(["python3", "-m", "venv", "/home/dave/garden/venv"],
+        run_command(["python3", "-m", "venv", "/home/dave/pool-pH-System/venv"],
                     "Create Python venv in /home/dave/garden/venv")
     else:
         print("\n=== venv already exists. Skipping creation. ===")
@@ -63,7 +63,7 @@ def main():
     run_command(["/home/dave/garden/venv/bin/pip", "install", "--upgrade", "pip"],
                 "Upgrade pip in the venv")
 
-    requirements_file = "/home/dave/garden/requirements.txt"
+    requirements_file = "/home/dave/pool-pH-System/requirements.txt"
     if os.path.isfile(requirements_file):
         run_command(["/home/dave/garden/venv/bin/pip", "install", "-r", requirements_file],
                     "Install Python dependencies from requirements.txt")
@@ -78,13 +78,13 @@ def main():
     # 7) Reload systemd so it sees the new service
     run_command(["systemctl", "daemon-reload"], "Reload systemd")
 
-    # 8) Enable and start the garden service
-    run_command(["systemctl", "enable", "garden.service"], "Enable garden.service on startup")
-    run_command(["systemctl", "start", "garden.service"], "Start garden.service now")
+    # 8) Enable and start the pH service
+    run_command(["systemctl", "enable", "pH.service"], "Enable pH.service on startup")
+    run_command(["systemctl", "start", "pH.service"], "Start pH.service now")
 
     print("\n=== Setup complete! ===")
-    print("You can check logs with:  journalctl -u garden.service -f")
-    print("You can check status with: systemctl status garden.service")
+    print("You can check logs with:  journalctl -u pH.service -f")
+    print("You can check status with: systemctl status pH.service")
 
 
 if __name__ == "__main__":

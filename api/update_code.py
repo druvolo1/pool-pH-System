@@ -122,11 +122,11 @@ def pull_no_restart():
 @update_code_blueprint.route("/restart", methods=["POST"])
 def restart_service():
     """
-    Just restarts garden.service
+    Just restarts pH.service
     """
     steps_output = []
     try:
-        out, err = run_cmd(["sudo", "systemctl", "restart", "garden.service"])
+        out, err = run_cmd(["sudo", "systemctl", "restart", "pH.service"])
         steps_output.append(out)
         if err:
             return jsonify({
