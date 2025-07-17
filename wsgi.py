@@ -1,5 +1,4 @@
 import eventlet
-eventlet.monkey_patch()
 import subprocess
 import os, stat
 
@@ -33,6 +32,10 @@ def flush_avahi():
 
 # Gunicorn hook: Runs after worker fork
 def post_fork(server, worker):
+    # Apply monkey_patch here (per-worker, after fork)
+    eventlet.monkey_patch()
+    print("[WSGI] Eventlet monkey-patched in worker.")
+
     print("[WSGI] Initializing worker process. Flushing Avahi, starting threads, and registering mDNS...")
 
     try:
