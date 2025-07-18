@@ -1,6 +1,7 @@
 def post_fork(server, worker):
     import eventlet
     from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
+    import eventlet.tpool  # For running blocking subprocess in a native thread
     print("[GUNICORN_CONFIG] Imported eventlet inside post_fork:", eventlet.__version__)
 
     # Apply monkey_patch here (per-worker, after fork)
@@ -14,10 +15,14 @@ def post_fork(server, worker):
 
     # Force USB rescan with improved commands for serial devices
     try:
-        # Reload udev rules first
-        subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
-        # Trigger re-add for all devices (no subsystem limit to ensure tty/serial symlinks)
-        subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
+        # Define a function for the blocking subprocess calls
+        def run_udevadm_commands():
+            subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
+            subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
+            return True
+
+        # Run the blocking commands in a native thread via tpool
+        eventlet.tpool.execute(run_udevadm_commands)
         print("[WSGI] USB/serial rescan triggered successfully.")
         # Give udev time to process (5-10s empirical delay)
         eventlet.sleep(5)
