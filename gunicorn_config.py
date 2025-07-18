@@ -1,14 +1,17 @@
 import eventlet
-from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
+from eventlet.green import subprocess
+print("[GUNICORN_CONFIG] Successfully imported eventlet:", eventlet.__version__)
 
 def post_fork(server, worker):
+    print("[GUNICORN_CONFIG] Inside post_fork, eventlet available:", eventlet.__version__)
     # Apply monkey_patch here (per-worker, after fork)
     eventlet.monkey_patch()
     print("[WSGI] Eventlet monkey-patched in worker.")
 
     # Disable Eventlet's multiple-readers check to avoid conflicts with multiprocessing pipes
     import eventlet.debug
-    eventlet.debug.hub_prevent_multiple_readers(False)  # WARNING: Disables global safety check; use only if necessary (low risk for our isolated mp.Pool)
+    eventlet.debug.hub_prevent_multiple_readers(False)  # WARNING: Disables global safety check; low risk for our isolated mp.Pool
+    print("[WSGI] Disabled multiple-readers check.")
 
     # Force USB rescan with improved commands for serial devices
     try:
@@ -43,7 +46,7 @@ def post_fork(server, worker):
     except Exception as e:
         print(f"[WSGI] Error in top-level startup code: {e}")
 
-# Other Gunicorn settings (moved from wsgi.py)
+# Other Gunicorn settings
 bind = "0.0.0.0:8000"
 workers = 1
 worker_class = "eventlet"
