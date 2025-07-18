@@ -6,6 +6,10 @@ def post_fork(server, worker):
     eventlet.monkey_patch()
     print("[WSGI] Eventlet monkey-patched in worker.")
 
+    # Disable Eventlet's multiple-readers check to avoid conflicts with multiprocessing pipes
+    import eventlet.debug
+    eventlet.debug.hub_prevent_multiple_readers(False)  # WARNING: Disables global safety check; use only if necessary (low risk for our isolated mp.Pool)
+
     # Force USB rescan with improved commands for serial devices
     try:
         # Reload udev rules first
