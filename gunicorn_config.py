@@ -1,5 +1,5 @@
 import eventlet
-from eventlet.green import subprocess
+from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
 print("[GUNICORN_CONFIG] Successfully imported eventlet:", eventlet.__version__)
 
 def post_fork(server, worker):
