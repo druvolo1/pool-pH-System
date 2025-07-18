@@ -1,9 +1,8 @@
-import eventlet
-from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
-print("[GUNICORN_CONFIG] Successfully imported eventlet:", eventlet.__version__)
-
 def post_fork(server, worker):
-    print("[GUNICORN_CONFIG] Inside post_fork, eventlet available:", eventlet.__version__)
+    import eventlet
+    from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
+    print("[GUNICORN_CONFIG] Imported eventlet inside post_fork:", eventlet.__version__)
+
     # Apply monkey_patch here (per-worker, after fork)
     eventlet.monkey_patch()
     print("[WSGI] Eventlet monkey-patched in worker.")
