@@ -1,11 +1,3 @@
-"""ScreenLogic polling service – *full* data export
-   -------------------------------------------------
-   • Runs on a background thread.
-   • Retrieves the gateway’s complete data tree.
-   • Flattens every scalar field (int / float / str / bool).
-   • Exposes last snapshot via get_latest_screenlogic_data().
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -16,16 +8,15 @@ from typing import Any, Dict, List
 import eventlet  # Added for consistency
 eventlet.monkey_patch()  # Ensure patched
 
+import multiprocessing as mp  # NEW: For isolated asyncio execution
+
 from screenlogicpy import ScreenLogicGateway
 from utils.settings_utils import load_settings
-
-from eventlet import tpool  # For blocking async in threads
 
 _log = logging.getLogger(__name__)
 
 # Most-recent flattened payload
 _latest_data: Dict[str, Any] = {}
-
 
 # ───────────────────────── helper: flatten any ScreenLogic tree ─────────────
 def _flatten(node: Any, path: List[str], out: Dict[str, Any]) -> None:
@@ -50,17 +41,34 @@ def _flatten(node: Any, path: List[str], out: Dict[str, Any]) -> None:
             _flatten(itm, path + [str(idx)], out)
         return
 
-
 def flatten_screenlogic(data_tree: dict) -> Dict[str, Any]:
     """Return a flat { dotted.path : scalar } dict for *all* values."""
     flat: Dict[str, Any] = {}
     _flatten(data_tree, [], flat)
     return flat
 
+# NEW: Define the poll function to run in a separate process (picklable, imports inside)
+def sync_poll(host: str) -> Dict[str, Any]:
+    import asyncio
+    from screenlogicpy import ScreenLogicGateway  # Import here to ensure fresh in child process
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        gw = ScreenLogicGateway()
+        loop.run_until_complete(gw.async_connect(host))
+        loop.run_until_complete(gw.async_update())
+        flat = flatten_screenlogic(gw.get_data())
+        loop.run_until_complete(gw.async_disconnect())
+        return flat
+    finally:
+        loop.close()
 
 # ───────────────────────── ScreenLogic service class ────────────────────────
 class ScreenLogicService:
     def __init__(self) -> None:
+        mp.set_start_method('spawn')  # NEW: Ensure child processes start fresh (no Eventlet patches)
+        self._pool = mp.Pool(processes=1)  # NEW: Reuse a single child process for polls
         self._stop = eventlet.Event()  # Use eventlet Event for consistency
 
     # start / stop -----------------------------------------------------------
@@ -70,6 +78,8 @@ class ScreenLogicService:
 
     def stop(self) -> None:
         self._stop.send()
+        self._pool.close()  # NEW: Clean up the pool on stop
+        self._pool.terminate()
 
     # main loop --------------------------------------------------------------
     def _run(self) -> None:
@@ -88,22 +98,8 @@ class ScreenLogicService:
                     eventlet.sleep(interval)
                     continue
 
-                def sync_poll() -> Dict[str, Any]:
-                    # Run async poll in a sync wrapper for tpool
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    try:
-                        gw = ScreenLogicGateway()
-                        loop.run_until_complete(gw.async_connect(host))
-                        loop.run_until_complete(gw.async_update())
-                        flat = flatten_screenlogic(gw.get_data())
-                        loop.run_until_complete(gw.async_disconnect())
-                        return flat
-                    finally:
-                        loop.close()
-
-                # Run the async poll in a real thread to avoid eventlet conflicts
-                snapshot = tpool.execute(sync_poll)
+                # NEW: Run in separate process (unpatched environment)
+                snapshot = self._pool.apply(sync_poll, (host,))
 
                 _latest_data.clear()
                 _latest_data.update(snapshot)
@@ -119,12 +115,10 @@ class ScreenLogicService:
 
             eventlet.sleep(interval)
 
-
 # ───────────────────────── public API ───────────────────────────────────────
 def get_latest_screenlogic_data() -> Dict[str, Any]:
     """Return a *copy* of the most recent flattened snapshot."""
     return _latest_data.copy()
-
 
 # singleton created at import-time; app.py calls .start()
 screenlogic_service = ScreenLogicService()

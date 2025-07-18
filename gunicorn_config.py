@@ -1,17 +1,22 @@
 import eventlet
-import subprocess  # Add this import
+from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
 
 def post_fork(server, worker):
     # Apply monkey_patch here (per-worker, after fork)
     eventlet.monkey_patch()
     print("[WSGI] Eventlet monkey-patched in worker.")
 
-    # Force USB rescan to ensure devices are detected
+    # Force USB rescan with improved commands for serial devices
     try:
-        subprocess.run(["sudo", "udevadm", "trigger", "--action=add", "--subsystem-match=usb"], check=True)
-        print("[WSGI] USB rescan triggered successfully.")
+        # Reload udev rules first
+        subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
+        # Trigger re-add for all devices (no subsystem limit to ensure tty/serial symlinks)
+        subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
+        print("[WSGI] USB/serial rescan triggered successfully.")
+        # Give udev time to process (5-10s empirical delay)
+        eventlet.sleep(5)
     except Exception as e:
-        print(f"[WSGI] Error triggering USB rescan: {e}")
+        print(f"[WSGI] Error triggering USB/serial rescan: {e}")
 
     print("[WSGI] Initializing worker process. Flushing Avahi, starting threads, and registering mDNS...")
 
