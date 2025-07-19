@@ -10,7 +10,7 @@ import subprocess
 import re
 from queue import Queue
 from datetime import datetime, timedelta
-from gevent.pool import ThreadPool  # For blocking I/O like ser.read
+import gevent.threadpool as tpool  # For blocking I/O like ser.read
 from gevent.lock import Semaphore
 from gevent.event import Event
 from collections import deque  # For optional median filter
@@ -355,8 +355,7 @@ def serial_reader():
                             last_no_reading_error_time = datetime.now()
 
                 try:
-                    # Replace tpool with direct call, assuming gevent patch makes it cooperative
-                    raw_data = ser.read(100)
+                    raw_data = tpool.execute(ser.read, 100)
                     if not raw_data:
                         # zero bytes => transient read error
                         consecutive_read_errors += 1
