@@ -1,6 +1,5 @@
 def post_fork(server, worker):
     import eventlet
-    from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
     import eventlet.tpool  # For running blocking subprocess in a native thread
     print("[GUNICORN_CONFIG] Imported eventlet inside post_fork:", eventlet.__version__)
 
@@ -17,8 +16,10 @@ def post_fork(server, worker):
     try:
         # Define a function for the blocking subprocess calls
         def run_udevadm_commands():
-            subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
-            subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
+            import eventlet.patcher
+            original_subprocess = eventlet.patcher.original('subprocess')
+            original_subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
+            original_subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
             return True
 
         # Run the blocking commands in a native thread via tpool
