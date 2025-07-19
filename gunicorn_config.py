@@ -1,6 +1,8 @@
 def post_fork(server, worker):
     import eventlet
+    from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
     import eventlet.tpool  # For running blocking subprocess in a native thread
+    import eventlet.debug  # For disabling blocking detection
     print("[GUNICORN_CONFIG] Imported eventlet inside post_fork:", eventlet.__version__)
 
     # Apply monkey_patch here (per-worker, after fork)
@@ -8,15 +10,16 @@ def post_fork(server, worker):
     print("[WSGI] Eventlet monkey-patched in worker.")
 
     # Disable Eventlet's multiple-readers check to avoid conflicts with multiprocessing pipes
-    import eventlet.debug
     eventlet.debug.hub_prevent_multiple_readers(False)  # WARNING: Disables global safety check; low risk for our isolated mp.Pool
     print("[WSGI] Disabled multiple-readers check.")
 
     # Force USB rescan with improved commands for serial devices
     try:
+        # Temporarily disable hub blocking detection to avoid false positives during rescan
+        eventlet.debug.hub_blocking_detection(False)
+
         # Define a function for the blocking subprocess calls
         def run_udevadm_commands():
-            import eventlet.patcher
             original_subprocess = eventlet.patcher.original('subprocess')
             original_subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
             original_subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
@@ -29,6 +32,9 @@ def post_fork(server, worker):
         eventlet.sleep(5)
     except Exception as e:
         print(f"[WSGI] Error triggering USB/serial rescan: {e}")
+    finally:
+        # Re-enable hub blocking detection
+        eventlet.debug.hub_blocking_detection(True)
 
     print("[WSGI] Initializing worker process. Flushing Avahi, starting threads, and registering mDNS...")
 
