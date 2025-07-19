@@ -1,7 +1,6 @@
 def post_fork(server, worker):
     import eventlet
-    from eventlet.green import subprocess  # Use Eventlet's green subprocess for compatibility
-    import eventlet.tpool  # For running blocking subprocess in a native thread
+    import threading  # For running blocking rescan in a native thread
     print("[GUNICORN_CONFIG] Imported eventlet inside post_fork:", eventlet.__version__)
 
     # Apply monkey_patch here (per-worker, after fork)
@@ -13,30 +12,23 @@ def post_fork(server, worker):
     eventlet.debug.hub_prevent_multiple_readers(False)  # WARNING: Disables global safety check; low risk for our isolated mp.Pool
     print("[WSGI] Disabled multiple-readers check.")
 
-    # Disable blocking detection early for rescan on Pi
-    eventlet.debug.hub_blocking_detection(False)  # Temporarily disable for rescan
-    print("[WSGI] Temporarily disabled blocking detection for rescan.")
-
     # Force USB rescan with improved commands for serial devices
     try:
         # Define a function for the blocking subprocess calls
         def run_udevadm_commands():
-            original_subprocess = eventlet.patcher.original('subprocess')
-            original_subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
-            original_subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
-            return True
+            from subprocess import run  # Use standard subprocess in native thread
+            run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
+            run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
 
-        # Run the blocking commands in a native thread via tpool
-        eventlet.tpool.execute(run_udevadm_commands)
+        # Run the blocking commands in a native thread
+        rescan_thread = threading.Thread(target=run_udevadm_commands)
+        rescan_thread.start()
+        rescan_thread.join()  # Wait for completion
         print("[WSGI] USB/serial rescan triggered successfully.")
         # Give udev time to process (10s empirical delay for Pi)
         eventlet.sleep(10)
     except Exception as e:
         print(f"[WSGI] Error triggering USB/serial rescan: {e}")
-    finally:
-        # Re-enable blocking detection after rescan
-        eventlet.debug.hub_blocking_detection(True)
-        print("[WSGI] Re-enabled blocking detection.")
 
     print("[WSGI] Initializing worker process. Flushing Avahi, starting threads, and registering mDNS...")
 
