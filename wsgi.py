@@ -1,5 +1,5 @@
-import eventlet
-eventlet.monkey_patch()
+import gevent
+gevent.monkey.patch_all()
 import subprocess
 import os, stat
 

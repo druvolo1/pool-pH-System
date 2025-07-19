@@ -1,3 +1,5 @@
+# screenlogic_service.py
+
 from __future__ import annotations
 
 import asyncio
@@ -5,8 +7,8 @@ import logging
 import time
 from typing import Any, Dict, List
 
-import eventlet  # Added for consistency
-eventlet.monkey_patch()  # Ensure patched
+import gevent  # Added for consistency
+gevent.monkey.patch_all()  # Ensure patched
 
 import multiprocessing as mp  # NEW: For isolated asyncio execution
 
@@ -69,33 +71,33 @@ class ScreenLogicService:
     def __init__(self) -> None:
         mp.set_start_method('spawn')  # NEW: Ensure child processes start fresh (no Eventlet patches)
         self._pool = mp.Pool(processes=1)  # NEW: Reuse a single child process for polls
-        self._stop = eventlet.Event()  # Use eventlet Event for consistency
+        self._stop = gevent.event.Event()  # Use gevent Event for consistency
 
     # start / stop -----------------------------------------------------------
     def start(self) -> None:
-        eventlet.spawn(self._run)  # Use eventlet.spawn like other services
+        gevent.spawn(self._run)  # Use gevent.spawn like other services
         _log.info("[ScreenLogic] service greenlet started")
 
     def stop(self) -> None:
-        self._stop.send()
+        self._stop.set()
         self._pool.close()  # NEW: Clean up the pool on stop
         self._pool.terminate()
 
     # main loop --------------------------------------------------------------
     def _run(self) -> None:
-        while not self._stop.ready():
+        while not self._stop.is_set():
             cfg = load_settings().get("screenlogic", {})
             interval = int(cfg.get("poll_interval", 5)) or 5
 
             try:
                 if not cfg.get("enabled"):
-                    eventlet.sleep(10)
+                    gevent.sleep(10)
                     continue
 
                 host = str(cfg.get("host", "")).strip()
                 if not host:
                     _log.warning("[ScreenLogic] enabled but no host/IP in settings")
-                    eventlet.sleep(interval)
+                    gevent.sleep(interval)
                     continue
 
                 # NEW: Run in separate process (unpatched environment)
@@ -113,7 +115,7 @@ class ScreenLogicService:
             except Exception as exc:
                 _log.warning("[ScreenLogic] poll failed: %s", exc)
 
-            eventlet.sleep(interval)
+            gevent.sleep(interval)
 
 # ───────────────────────── public API ───────────────────────────────────────
 def get_latest_screenlogic_data() -> Dict[str, Any]:

@@ -1,8 +1,8 @@
 # File: ph_service.py
 print(f"LOADED ph_service.py from {__file__}", flush=True)
 
-import eventlet
-eventlet.monkey_patch()  # Ensure all standard libs are patched early
+import gevent
+gevent.monkey.patch_all()  # Ensure all standard libs are patched early
 
 import signal
 import serial
@@ -10,8 +10,9 @@ import subprocess
 import re
 from queue import Queue
 from datetime import datetime, timedelta
-from eventlet import tpool
-from eventlet import semaphore, event
+from gevent.pool import ThreadPool  # For blocking I/O like ser.read
+from gevent.lock import Semaphore
+from gevent.event import Event
 from collections import deque  # For optional median filter
 
 from services.error_service import set_error, clear_error
@@ -20,9 +21,9 @@ from utils.settings_utils import load_settings, save_settings
 
 # Shared queue for commands sent to the probe
 command_queue = Queue()
-stop_event = event.Event()
+stop_event = Event()
 
-ph_lock = semaphore.Semaphore()
+ph_lock = Semaphore()
 
 # Regex: stricter for 0-14 with 0-3 decimals (improvement, but configurable leniency if needed)
 PH_FLOAT_REGEX = re.compile(r'^([0-9]|1[0-4])(?:\.\d{1,3})?$')
@@ -78,7 +79,7 @@ ph_jumps = []  # list of datetime objects when a big jump occurred
 last_read_time = None
 
 # Slope data + event (kept as improvement)
-slope_event = event.Event()
+slope_event = Event()
 slope_data = None
 
 def parse_buffer(ser):
@@ -172,7 +173,7 @@ def parse_buffer(ser):
 
                 log_with_timestamp(f"[DEBUG] Slope data saved: {slope_data}")
                 last_sent_command = None
-                slope_event.send()
+                slope_event.set()
 
                 if not command_queue.empty():
                     nxt = command_queue.get()
@@ -294,7 +295,7 @@ def serial_reader():
     global ser, buffer, latest_ph_value, old_ph_value, last_read_time
 
     print("DEBUG: Entered serial_reader() at all...")
-    eventlet.sleep(20)  # Add 5-second delay for USB initialization
+    gevent.sleep(20)  # Add 5-second delay for USB initialization
     print("DEBUG: SLEEP ELAPSED")
     consecutive_fails = 0              # times we failed to open the port overall
     consecutive_read_errors = 0        # times read() returned zero bytes
@@ -304,7 +305,7 @@ def serial_reader():
     FATAL_ERROR_THRESHOLD = 2   # how many consecutive fatal exceptions we allow
     last_no_reading_error_time = None
 
-    while not stop_event.ready():
+    while not stop_event.is_set():
         settings = load_settings()
         ph_probe_path = settings.get("usb_roles", {}).get("ph_probe")
 
@@ -312,7 +313,7 @@ def serial_reader():
             clear_status("ph_probe", "communication")
             clear_status("ph_probe", "reading")
             clear_status("ph_probe", "ph_value")
-            eventlet.sleep(5)
+            gevent.sleep(5)
             continue
 
         try:
@@ -343,7 +344,7 @@ def serial_reader():
             log_with_timestamp("[DEBUG] Enabling continuous read mode now that the device is open.")
             send_command_to_probe(ser, "C,1")
 
-            while not stop_event.ready():
+            while not stop_event.is_set():
                 if last_read_time:
                     elapsed = (datetime.now() - last_read_time).total_seconds()
                     if elapsed > 30:
@@ -354,14 +355,15 @@ def serial_reader():
                             last_no_reading_error_time = datetime.now()
 
                 try:
-                    raw_data = tpool.execute(ser.read, 100)
+                    # Replace tpool with direct call, assuming gevent patch makes it cooperative
+                    raw_data = ser.read(100)
                     if not raw_data:
                         # zero bytes => transient read error
                         consecutive_read_errors += 1
                         log_with_timestamp(f"[DEBUG] read() returned no data => consecutive_read_errors={consecutive_read_errors}")
                         if consecutive_read_errors < READ_ERROR_THRESHOLD:
                             log_with_timestamp("[DEBUG] Ignoring short read glitch, continuing.")
-                            eventlet.sleep(0.05)
+                            gevent.sleep(0.05)
                             continue
                         else:
                             # repeated empty reads => treat as “fatal” and raise SerialException
@@ -404,14 +406,14 @@ def serial_reader():
                     if consecutive_fatal_exceptions < FATAL_ERROR_THRESHOLD:
                         # Let’s keep going for now, not closing the port
                         log_with_timestamp("[DEBUG] Tolerating a fatal read error. We'll keep the port open for now.")
-                        eventlet.sleep(0.2)
+                        gevent.sleep(0.2)
                         continue
                     else:
                         # We exceeded the threshold => raise again to break out of the loop
                         log_with_timestamp("[DEBUG] Exceeded FATAL_ERROR_THRESHOLD => forcing reconnect.")
                         raise read_ex
 
-                eventlet.sleep(0.01)
+                gevent.sleep(0.01)
 
         except (serial.SerialException, OSError) as e:
             # Reconnect logic
@@ -426,7 +428,7 @@ def serial_reader():
                            f"Cannot open {ph_probe_path} after {consecutive_fails} attempts.")
 
             set_error("PH_USB_OFFLINE")
-            eventlet.sleep(5)
+            gevent.sleep(5)
 
         finally:
             if ser and ser.is_open:
@@ -440,7 +442,6 @@ def send_configuration_commands(ser):
         send_command_to_probe(ser, command)
     except Exception as e:
         log_with_timestamp(f"[DEBUG] Error sending configuration commands: {e}")
-
 
 def calibrate_ph(ser, level):
     valid_levels = {
@@ -467,7 +468,6 @@ def calibrate_ph(ser, level):
             log_with_timestamp(msg)
             return {"status": "failure", "message": "A command is already in progress"}
 
-
 def enqueue_calibration(level):
     valid_levels = {
         'low': 'Cal,low,4.00',
@@ -486,7 +486,6 @@ def enqueue_calibration(level):
     command_queue.put({"command": command, "type": "calibration"})
     return {"status": "success", "message": f"Calibration command '{command}' enqueued."}
 
-
 def restart_serial_reader():
     global stop_event, buffer, latest_ph_value
     log_with_timestamp("[DEBUG] restart_serial_reader() called.")
@@ -497,8 +496,8 @@ def restart_serial_reader():
         log_with_timestamp("[DEBUG] Buffer and latest pH value cleared for restart.")
 
     stop_serial_reader()
-    eventlet.sleep(1)
-    stop_event = event.Event()
+    gevent.sleep(1)
+    stop_event = Event()
     start_serial_reader()
 
 def get_last_sent_command():
@@ -509,7 +508,7 @@ def get_last_sent_command():
 
 def start_serial_reader():
     log_with_timestamp("[DEBUG] start_serial_reader() -> spawning serial_reader thread.")
-    eventlet.spawn(serial_reader)
+    gevent.spawn(serial_reader)
 
 def stop_serial_reader():
     global buffer, latest_ph_value, ser
@@ -524,9 +523,8 @@ def stop_serial_reader():
         ser.close()
         log_with_timestamp("[DEBUG] Serial connection closed.")
 
-    stop_event.send()
+    stop_event.set()
     log_with_timestamp("[DEBUG] serial_reader stopped via event.")
-
 
 def get_latest_ph_reading():
     global latest_ph_value
@@ -587,7 +585,7 @@ def enqueue_slope_query():
     global slope_event, slope_data
 
     log_with_timestamp("[DEBUG] enqueue_slope_query() called. Will set up slope_event and slope_data.")
-    slope_event = event.Event()
+    slope_event = Event()
     slope_data = None
 
     # Step 1: turn off continuous
@@ -603,9 +601,9 @@ def enqueue_slope_query():
 
     log_with_timestamp("[DEBUG] enqueue_slope_query() -> about to WAIT up to 10s for slope_event.")
     try:
-        with eventlet.timeout.Timeout(10, False):
+        with gevent.Timeout(10, False):
             slope_event.wait()
-    except eventlet.timeout.Timeout:
+    except gevent.Timeout:
         log_with_timestamp("[DEBUG] enqueue_slope_query() -> Timed out waiting for slope_event.")
         return None
 

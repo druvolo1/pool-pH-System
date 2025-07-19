@@ -1,32 +1,18 @@
+import gevent
+from gevent import subprocess  # Gevent's green subprocess for compatibility
+
 def post_fork(server, worker):
-    import eventlet
-    import threading  # For running blocking rescan in a native thread
-    print("[GUNICORN_CONFIG] Imported eventlet inside post_fork:", eventlet.__version__)
-
     # Apply monkey_patch here (per-worker, after fork)
-    eventlet.monkey_patch()
-    print("[WSGI] Eventlet monkey-patched in worker.")
-
-    # Disable Eventlet's multiple-readers check to avoid conflicts with multiprocessing pipes
-    import eventlet.debug
-    eventlet.debug.hub_prevent_multiple_readers(False)  # WARNING: Disables global safety check; low risk for our isolated mp.Pool
-    print("[WSGI] Disabled multiple-readers check.")
+    gevent.monkey.patch_all()
+    print("[WSGI] Gevent monkey-patched in worker.")
 
     # Force USB rescan with improved commands for serial devices
     try:
-        # Define a function for the blocking subprocess calls
-        def run_udevadm_commands():
-            from subprocess import run  # Use standard subprocess in native thread
-            run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
-            run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
-
-        # Run the blocking commands in a native thread
-        rescan_thread = threading.Thread(target=run_udevadm_commands)
-        rescan_thread.start()
-        rescan_thread.join()  # Wait for completion
+        subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
+        subprocess.run(["sudo", "udevadm", "trigger", "--action=add"], check=True)
         print("[WSGI] USB/serial rescan triggered successfully.")
         # Give udev time to process (10s empirical delay for Pi)
-        eventlet.sleep(10)
+        gevent.sleep(10)
     except Exception as e:
         print(f"[WSGI] Error triggering USB/serial rescan: {e}")
 
@@ -54,7 +40,7 @@ def post_fork(server, worker):
 # Other Gunicorn settings
 bind = "0.0.0.0:8000"
 workers = 1
-worker_class = "eventlet"
+worker_class = "gevent"
 timeout = 60
 loglevel = "debug"
 preload_app = False

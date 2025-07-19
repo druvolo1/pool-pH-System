@@ -43,8 +43,8 @@ def check_for_hardware_errors():
     Main loop that periodically checks hardware availability.
     We can add more checks (like pH hardware) here as the code evolves.
     """
-    import eventlet
+    import gevent
     while True:
         check_relay_offline()
         # If we want to add more checks, do them here.
-        eventlet.sleep(10)  # check every 10 seconds
+        gevent.sleep(10)  # check every 10 seconds

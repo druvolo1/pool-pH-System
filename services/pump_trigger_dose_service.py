@@ -12,7 +12,7 @@ Pump-triggered auto-dosing service
 from datetime import datetime, timedelta
 from typing import Optional
 
-import eventlet
+import gevent
 
 from utils.settings_utils import load_settings
 from services.dosage_service import perform_auto_dose
@@ -27,7 +27,7 @@ def _log(msg: str) -> None:
 
 
 def pump_trigger_dose_loop() -> None:
-    """Background green-thread started via eventlet.spawn()."""
+    """Background green-thread started via gevent.spawn()."""
     last_pump_state: Optional[int] = None        # 0 / 1 / None
     scheduled_time: Optional[datetime] = None    # when to dose
     last_dosed_date: Optional[datetime.date] = None
@@ -40,7 +40,7 @@ def pump_trigger_dose_loop() -> None:
             if not settings.get("auto_dosing_enabled", False):
                 scheduled_time = None
                 last_pump_state = None
-                eventlet.sleep(5)
+                gevent.sleep(5)
                 continue
 
             pump_id     = int(settings.get("pump_circuit", 0))
@@ -59,7 +59,7 @@ def pump_trigger_dose_loop() -> None:
 
             # if ScreenLogic hasn’t reported a valid value yet
             if pump_state not in (0, 1):
-                eventlet.sleep(5)
+                gevent.sleep(5)
                 continue
 
             # ── OFF → ON transition: schedule a dose ───────────────────────
@@ -96,8 +96,8 @@ def pump_trigger_dose_loop() -> None:
                 scheduled_time = None   # one-shot complete
 
             last_pump_state = pump_state
-            eventlet.sleep(5)
+            gevent.sleep(5)
 
         except Exception as exc:
             _log(f"ERROR — {exc}")
-            eventlet.sleep(5)
+            gevent.sleep(5)

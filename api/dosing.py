@@ -1,7 +1,7 @@
 # File: api/dosing.py
 
 import time
-import eventlet
+import gevent
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from api.settings import load_settings
@@ -68,7 +68,7 @@ def manual_dosage():
 
     turn_on_relay(relay_port)
     print(f"[Manual Dispense] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
-    eventlet.sleep(duration_sec)
+    gevent.sleep(duration_sec)
     turn_off_relay(relay_port)
     print(f"[Manual Dispense] Turning OFF Relay {relay_port} after {duration_sec:.2f} seconds.")
 

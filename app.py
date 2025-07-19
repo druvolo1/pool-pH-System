@@ -2,8 +2,8 @@
 # app.py
 ###############################################################################
 import socket
-import eventlet
-eventlet.monkey_patch()
+import gevent
+gevent.monkey.patch_all()
 
 import sys
 import signal
@@ -44,7 +44,7 @@ from services.pump_trigger_dose_service import pump_trigger_dose_loop
 # 1) Create the global SocketIO instance
 ########################################################################
 socketio = SocketIO(
-    async_mode="eventlet",
+    async_mode="gevent",
     cors_allowed_origins="*"
 )
 
@@ -69,7 +69,7 @@ def get_local_ip():
 app = Flask(__name__)
 CORS(app)
 
-socketio.init_app(app, async_mode="eventlet", cors_allowed_origins="*")
+socketio.init_app(app, async_mode="gevent", cors_allowed_origins="*")
 
 # Let status_namespace.py have our main SocketIO reference
 set_socketio_instance(socketio)
@@ -92,11 +92,9 @@ def broadcast_ph_readings():
                     last_emitted_value = ph_value
                     socketio.emit('ph_update', {'ph': ph_value})
                     log_with_timestamp(f"[Broadcast] Emitting pH update: {ph_value}")
-            eventlet.sleep(1)
+            gevent.sleep(1)
         except Exception as e:
             log_with_timestamp(f"[Broadcast] Error broadcasting pH value: {e}")
-
-
 
 def broadcast_status():
     """
@@ -107,41 +105,39 @@ def broadcast_status():
     while True:
         try:
             emit_status_update()
-            eventlet.sleep(5)
+            gevent.sleep(5)
         except Exception as e:
             log_with_timestamp(f"[broadcast_status] Error: {e}")
-            eventlet.sleep(5)
+            gevent.sleep(5)
 
 def start_threads():
     settings = load_settings()
 
     # Broadcast latest pH to websockets
     log_with_timestamp("Spawning broadcast_ph_readings…")
-    eventlet.spawn(broadcast_ph_readings)
+    gevent.spawn(broadcast_ph_readings)
 
     # ▶ NEW pump-trigger auto-dosing loop
     log_with_timestamp("Spawning pump-trigger auto dosing…")
-    eventlet.spawn(pump_trigger_dose_loop)
+    gevent.spawn(pump_trigger_dose_loop)
 
     # Serial reader
     from services.ph_service import serial_reader
     log_with_timestamp("Spawning pH serial reader…")
-    eventlet.spawn(serial_reader)
+    gevent.spawn(serial_reader)
 
     # Status broadcaster
     log_with_timestamp("Spawning status broadcaster…")
-    eventlet.spawn(broadcast_status)
+    gevent.spawn(broadcast_status)
 
     # Hardware error checker
     log_with_timestamp("Spawning hardware error checker…")
-    eventlet.spawn(check_for_hardware_errors)
+    gevent.spawn(check_for_hardware_errors)
 
     # ScreenLogic poller
     from services.screenlogic_service import screenlogic_service
     log_with_timestamp("Starting ScreenLogic poller…")
     screenlogic_service.start()
-
-
 
 ########################################################################
 # Register Blueprints
@@ -155,7 +151,6 @@ app.register_blueprint(update_code_blueprint, url_prefix='/api/system')
 app.register_blueprint(debug_blueprint, url_prefix='/debug')
 app.register_blueprint(notifications_blueprint, url_prefix='/api/notifications')
 app.register_blueprint(screenlogic_bp) 
-
 
 ########################################################################
 # Routes
