@@ -273,3 +273,4 @@ except Exception as e:
 if __name__ == "__main__":
     log_with_timestamp("[WSGI] Running in local development mode...")
     socketio.run(app, host="0.0.0.0", port=8000, debug=False)
+    
