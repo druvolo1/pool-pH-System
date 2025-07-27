@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Controls</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script>
+        async function toggleDebug(component) {
+            const button = document.getElementById(`toggle-${component}`);
+            const currentState = button.classList.contains("btn-on-active");
+            const newState = !currentState;
+
+            // Update UI Immediately
+            button.classList.toggle("btn-on-active", newState);
+            button.classList.toggle("btn-off-active", !newState);
+            button.innerText = newState ? "ON" : "OFF";
+
+            // Send update to server
+            try {
+                await fetch(`/debug/toggle`, {  // 🔧 FIXED API ENDPOINT
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ component: component, enabled: newState }) // 🔧 FIXED JSON KEYS
+                });
+            } catch (error) {
+                console.error("Error updating debug state:", error);
+                alert("Failed to update debug state. Check the console for details.");
+            }
+        }
+
+        async function fetchDebugStates() {
+            try {
+                const response = await fetch("/debug/status");  // 🔧 FIXED API ENDPOINT
+                const debugStates = await response.json();
+
+                for (const component in debugStates) {
+                    const button = document.getElementById(`toggle-${component}`);
+                    if (button) {
+                        const isEnabled = debugStates[component];
+                        button.classList.toggle("btn-on-active", isEnabled);
+                        button.classList.toggle("btn-off-active", !isEnabled);
+                        button.innerText = isEnabled ? "ON" : "OFF";
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching debug states:", error);
+            }
+        }
+
+        window.onload = fetchDebugStates;
+    </script>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/debug" class="active">Debug</a></li>
+        </ul>
+    </nav>
+
+    <main>
+        <h1>Debug Controls</h1>
+        <p class="subtitle">Toggle debug logs for different system components.</p>
+
+        <div class="settings-grid">
+            <div class="data-container">
+                <h3>Power Control</h3>
+                <button id="toggle-power_control_service" class="btn-off-active" onclick="toggleDebug('power_control_service')">OFF</button>
+            </div>
+
+            <div class="data-container">
+                <h3>Water Level</h3>
+                <button id="toggle-water_level_service" class="btn-off-active" onclick="toggleDebug('water_level_service')">OFF</button>
+            </div>
+
+            <div class="data-container">
+                <h3>Valves</h3>
+                <button id="toggle-valve_relay_service" class="btn-off-active" onclick="toggleDebug('valve_relay_service')">OFF</button>
+            </div>
+
+            <div class="data-container">
+                <h3>WebSocket</h3>
+                <button id="toggle-websocket" class="btn-off-active" onclick="toggleDebug('websocket')">OFF</button>
+            </div>
+
+            <div class="data-container">
+                <h3>pH</h3>
+                <button id="toggle-ph" class="btn-off-active" onclick="toggleDebug('ph')">OFF</button>
+            </div>
+            <div class="data-container">
+                <h3>Notifications</h3>
+                <button
+                  id="toggle-notifications" class="btn-off-active" onclick="toggleDebug('notifications')">OFF</button>
+              </div>
+        </div>
+    </main>
+</body>
+</html>

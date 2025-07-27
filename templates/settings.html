@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings</title>
+
+  <!-- Styles & basic libs -->
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    .disabled-section {
+      opacity: 0.25;
+      pointer-events: none;
+      position: relative;
+    }
+    .disabled-section[data-tip]::after {
+      content: attr(data-tip);
+      display: none;
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: #333;
+      color: #fff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .disabled-section:hover::after {
+      display: block;
+    }
+  </style>
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+</head>
+
+<body>
+  <!-- ───── nav ───── -->
+  <nav>
+    <ul>
+      <li><a href="/">Home</a></li>
+      <li><a href="/dosage">Dosage</a></li>
+      <li><a href="/settings">Settings</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <h1>Pool-pH Controller — Settings</h1>
+
+    <div class="settings-grid">
+      <!-- USB assignment -->
+      <div class="data-container">
+        <h2>USB Devices</h2>
+        <label for="usb_device_select">Detected:</label>
+        <select id="usb_device_select"></select>
+        <button id="assign_ph_btn">Assign to pH probe</button>
+        <button id="clear_ph_btn">Clear</button>
+        <p>Status: <span id="ph_usb_status">unknown</span></p>
+        <form id="relay-form">
+          <label for="relay-device">Dosing Relay Module:</label>
+          <select id="relay-device" name="relay-device">
+            <option value="">Select a device</option>
+          </select>
+          <button type="submit">Save Dosing Relay Module</button>
+        </form>
+      </div>
+
+      <!-- pH range -->
+      <div class="data-container" id="ph-range-container">
+        <h2>pH Range</h2>
+        <form id="ph-range-form">
+          <label for="ph-min">Min:</label>
+          <input type="number" id="ph-min" step="0.01">
+          <label for="ph-max">Max:</label>
+          <input type="number" id="ph-max" step="0.01">
+          <button type="submit">Save</button>
+        </form>
+      </div>
+
+      <!-- General dosing -->
+      <div class="data-container" id="general-settings-container">
+        <h2>General Dosing</h2>
+        <form id="general-settings-form">
+          <label for="ph-target">Target pH:</label>
+          <input type="number" id="ph-target" step="0.01">
+          <label for="max-dosing">Max dose (ml):</label>
+          <input type="number" id="max-dosing" step="1">
+          <label><input type="checkbox" id="auto-dosing"> Auto-dosing</label>
+          <button type="submit">Save</button>
+        </form>
+      </div>
+
+      <!-- Dosage strength -->
+      <div class="data-container" id="dosage-strength-container">
+        <h2>Dosage Strength</h2>
+        <form id="dosage-strength-form">
+          <label for="ph-up-strength">pH-Up (ml / ΔpH):</label>
+          <input type="number" id="ph-up-strength" step="0.01">
+          <label for="ph-down-strength">pH-Down:</label>
+          <input type="number" id="ph-down-strength" step="0.01">
+          <button type="submit">Save</button>
+        </form>
+      </div>
+
+      <!-- Pump calibration -->
+      <div class="data-container" id="pump-calibration-container">
+        <h2>Pump Calibration</h2>
+        <form id="pump-calibration-form">
+          <label for="pump1-calibration">pH-Up (sec/ml):</label>
+          <input type="number" id="pump1-calibration" step="0.01">
+          <label for="pump2-calibration">pH-Down:</label>
+          <input type="number" id="pump2-calibration" step="0.01">
+          <button type="submit">Save</button>
+        </form>
+      </div>
+
+      <!-- Relay mapping -->
+      <div class="data-container" id="relay-port-container">
+        <h2>Relay Ports</h2>
+        <form id="relay-port-form">
+          <label for="ph-up-relay-port">pH-Up relay:</label>
+          <select id="ph-up-relay-port">
+            <option value="1">Relay 1</option>
+            <option value="2">Relay 2</option>
+          </select>
+          <label for="ph-down-relay-port">pH-Down:</label>
+          <select id="ph-down-relay-port">
+            <option value="1">Relay 1</option>
+            <option value="2">Relay 2</option>
+          </select>
+          <button type="submit">Save</button>
+        </form>
+      </div>
+
+      <!-- System name -->
+      <div class="data-container">
+        <h2>System Info</h2>
+        <form id="system-info-form">
+          <label for="system-name">Controller name:</label>
+          <input type="text" id="system-name">
+          <button type="submit">Save</button>
+        </form>
+      </div>
+
+      <!-- ScreenLogic integration (NEW) -->
+      <div class="data-container" id="screenlogic-container">
+        <h2>Pentair ScreenLogic</h2>
+        <form id="screenlogic-form">
+          <label><input type="checkbox" id="sl-enabled"> Enable</label>
+          <label for="sl-host">Gateway IP / Host:</label>
+          <input type="text" id="sl-host" placeholder="172.16.1.197">
+          <label for="pump-select">Pump circuit:</label>
+          <select id="pump-select">
+            <option value="0">Pump 0</option>
+            <option value="1">Pump 1</option>
+          </select>
+          <label for="delay-min">Delay after ON (min):</label>
+          <input type="number" id="delay-min" step="1">
+          <label for="system-volume">Pool volume (gal):</label>
+          <input type="number" id="system-volume" step="0.1">
+          <button type="submit" id="screenlogic-save">Save</button>
+        </form>
+      </div>
+
+      <!-- Notifications -->
+      <div class="data-container" id="notifications-container">
+        <h2>Notifications</h2>
+        <h3>Discord</h3>
+        <form id="discord-form">
+          <label><input type="checkbox" id="discord-enabled"> Enable</label>
+          <label for="discord-webhook-url">Webhook URL:</label>
+          <input type="text" id="discord-webhook-url" style="width:280px">
+          <button type="submit">Save</button>
+        </form>
+        <p>
+          Test: <input type="text" id="discord-test-message" style="width:240px">
+          <button id="discord-test-send-btn">Send</button>
+        </p>
+        <div id="discord-test-result" style="font-size:0.9rem;"></div>
+        <hr>
+        <h3>Telegram</h3>
+        <form id="telegram-form">
+          <label><input type="checkbox" id="telegram-enabled"> Enable</label>
+          <label for="telegram-bot-token">Bot token:</label>
+          <input type="text" id="telegram-bot-token" style="width:280px">
+          <label for="telegram-chat-id">Chat ID:</label>
+          <input type="text" id="telegram-chat-id" style="width:280px">
+          <button type="submit">Save</button>
+        </form>
+        <p>
+          Test: <input type="text" id="telegram-test-message" style="width:240px">
+          <button id="telegram-test-send-btn">Send</button>
+        </p>
+        <div id="telegram-test-result" style="font-size:0.9rem;"></div>
+      </div>
+
+      <!-- Code update / restart -->
+      <div class="data-container">
+        <h2>Code Update</h2>
+        <p>Current version: <span id="program-version"></span></p>
+        <button id="update-only-btn">Update (no restart)</button>
+        <div id="update-only-status"></div><br>
+        <button id="restart-service-btn">Restart service</button>
+        <div id="restart-status"></div>
+      </div>
+
+      <!-- Import / export -->
+      <div class="data-container">
+        <h2>Import / Export</h2>
+        <button id="export-btn">Export settings</button>
+        <hr>
+        <form id="import-form">
+          <input type="file" id="import-file" accept=".json">
+          <button type="submit">Import</button>
+        </form>
+        <div id="import-status"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Embedded JavaScript -->
+  <script>
+    /* ───────── helpers ───────── */
+    const $ = (id) => document.getElementById(id);
+
+    async function getJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`${url} → HTTP ${r.status}`);
+      return r.json();
+    }
+
+    async function postJSON(url, body) {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) throw new Error(`${url} → HTTP ${r.status}`);
+      return r.json();
+    }
+
+    /* ───────── USB helper ───────── */
+    const devSel = $("usb_device_select");
+    const assignBt = $("assign_ph_btn");
+    const clearBt = $("clear_ph_btn");
+    const statSp = $("ph_usb_status");
+
+    async function rescanUsb() {
+      const [devs, set] = await Promise.all([
+        getJSON("/api/settings/usb_devices"),
+        getJSON("/api/settings"),
+      ]);
+
+      const assignedPh = set.usb_roles?.ph_probe ?? "";
+      const assignedRelay = set.usb_roles?.relay ?? "";
+      devSel.innerHTML = "";
+      devs.forEach((d) => {
+        const o = document.createElement("option");
+        o.value = d.device;
+        o.textContent = d.device;
+        if (d.device === assignedPh) o.selected = true;
+        devSel.appendChild(o);
+      });
+      if (!assignedPh) {
+        const opt = new Option("-- select --", "");
+        opt.selected = true;
+        devSel.insertBefore(opt, devSel.firstChild);
+      }
+      statSp.textContent = assignedPh || "not assigned";
+      statSp.className = assignedPh ? "ok" : "warn";
+      const relayDevSel = $("relay-device");
+      relayDevSel.innerHTML = "";
+      devs.forEach((d) => {
+        const o = document.createElement("option");
+        o.value = d.device;
+        o.textContent = d.device;
+        if (d.device === assignedRelay) o.selected = true;
+        relayDevSel.appendChild(o);
+      });
+      if (!assignedRelay) {
+        const opt = new Option("-- select --", "");
+        opt.selected = true;
+        relayDevSel.insertBefore(opt, relayDevSel.firstChild);
+      }
+    }
+    assignBt?.addEventListener("click", async () => {
+      await postJSON("/api/settings/assign_usb", {
+        role: "ph_probe",
+        device: devSel.value || null,
+      });
+      rescanUsb();
+    });
+    clearBt?.addEventListener("click", async () => {
+      await postJSON("/api/settings/assign_usb", {
+        role: "ph_probe",
+        device: null,
+      });
+      rescanUsb();
+    });
+    $("relay-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await postJSON("/api/settings/assign_usb", {
+        role: "relay",
+        device: $("relay-device").value || null,
+      });
+      rescanUsb();
+    });
+
+    /* ───────── form-save helpers ───────── */
+    function floatOrNull(v) { return v === "" ? null : parseFloat(v); }
+    function intOrNull(v) { return v === "" ? null : parseInt(v, 10); }
+
+    async function saveAndRefresh(payload) {
+      await postJSON("/api/settings", payload);
+      loadPage(); // repopulate with fresh values
+    }
+
+    /* ───────── populate entire page ───────── */
+    async function loadPage() {
+      const s = await getJSON("/api/settings");
+
+      // pH-range
+      $("ph-min").value = s.ph_range?.min ?? "";
+      $("ph-max").value = s.ph_range?.max ?? "";
+
+      // general dosing
+      $("ph-target").value = s.ph_target ?? "";
+      $("max-dosing").value = s.max_dosing_amount ?? "";
+      $("auto-dosing").checked = !!s.auto_dosing_enabled;
+
+      // dosage strength
+      $("ph-up-strength").value = s.dosage_strength?.ph_up ?? "";
+      $("ph-down-strength").value = s.dosage_strength?.ph_down ?? "";
+
+      // pump calibration
+      $("pump1-calibration").value = s.pump_calibration?.pump1 ?? "";
+      $("pump2-calibration").value = s.pump_calibration?.pump2 ?? "";
+
+      // relay ports
+      $("ph-up-relay-port").value = s.relay_ports?.ph_up ?? 1;
+      $("ph-down-relay-port").value = s.relay_ports?.ph_down ?? 2;
+
+      // system name
+      $("system-name").value = s.system_name ?? "";
+
+      // ScreenLogic
+      $("sl-enabled").checked = !!s.screenlogic?.enabled;
+      $("sl-host").value = s.screenlogic?.host ?? "";
+      $("pump-select").value = s.pump_circuit ?? "0";
+      $("delay-min").value = s.delay_after_on ?? 0;
+      $("system-volume").value = s.system_volume ?? "";
+
+      // program version
+      const pv = $("program-version");
+      if (pv) pv.textContent = s.program_version ?? "N/A";
+    }
+
+    /* ───────── attach form listeners ───────── */
+    $("ph-range-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        ph_range: {
+          min: floatOrNull($("ph-min").value),
+          max: floatOrNull($("ph-max").value),
+        },
+      });
+    });
+
+    $("general-settings-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        ph_target: floatOrNull($("ph-target").value),
+        max_dosing_amount: floatOrNull($("max-dosing").value),
+        auto_dosing_enabled: $("auto-dosing").checked,
+      });
+    });
+
+    $("dosage-strength-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        dosage_strength: {
+          ph_up: floatOrNull($("ph-up-strength").value),
+          ph_down: floatOrNull($("ph-down-strength").value),
+        },
+      });
+    });
+
+    $("pump-calibration-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        pump_calibration: {
+          pump1: floatOrNull($("pump1-calibration").value),
+          pump2: floatOrNull($("pump2-calibration").value),
+        },
+      });
+    });
+
+    $("relay-port-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        relay_ports: {
+          ph_up: intOrNull($("ph-up-relay-port").value),
+          ph_down: intOrNull($("ph-down-relay-port").value),
+        },
+      });
+    });
+
+    $("system-info-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({ system_name: $("system-name").value.trim() });
+    });
+
+    $("screenlogic-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        screenlogic: {
+          enabled: $("sl-enabled").checked,
+          host: $("sl-host").value.trim(),
+        },
+        pump_circuit: $("pump-select").value,
+        delay_after_on: intOrNull($("delay-min").value),
+        system_volume: floatOrNull($("system-volume").value),
+      });
+    });
+
+    /* ───────── init ───────── */
+    document.addEventListener("DOMContentLoaded", () => {
+      loadPage();
+      rescanUsb();
+      setInterval(rescanUsb, 15000);
+    });
+  </script>
+</body>
+</html>
