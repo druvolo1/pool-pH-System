@@ -8,7 +8,7 @@ from utils.settings_utils import load_settings, save_settings
 
 settings_blueprint = Blueprint("settings", __name__)
 SETTINGS_FILE = os.path.join(os.getcwd(), "data", "settings.json")
-PROGRAM_VERSION = "1.0.62"
+PROGRAM_VERSION = "1.0.5"
 
 # ─────────────────────────── default settings ───────────────────────────
 _DEFAULTS = {
