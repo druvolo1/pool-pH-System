@@ -3,6 +3,8 @@ import eventlet
 import subprocess
 import os, stat
 
+from app import app  # Add this line to expose 'app' for Gunicorn
+
 from utils.settings_utils import load_settings
 
 
@@ -39,6 +41,5 @@ loglevel = "debug"
 preload_app = False
 
 if __name__ == "__main__":
-    from app import app  # Import here to avoid loading in master when used as config
     print("[WSGI] Running in local development mode (not under Gunicorn).")
     app.run(host="0.0.0.0", port=8000, debug=True)
