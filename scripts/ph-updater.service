@@ -1,0 +1,13 @@
+# /home/dave/ph/scripts/ph-updater.service
+
+[Unit]
+Description=ph Code Updater Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/dave/ph/scripts/ph_update.sh
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

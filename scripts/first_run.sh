@@ -3,19 +3,19 @@ import os
 import subprocess
 import sys
 
-SERVICE_PATH = "/etc/systemd/system/garden.service"
+SERVICE_PATH = "/etc/systemd/system/ph.service"
 
 SERVICE_CONTENT = """[Unit]
-Description=Garden Gunicorn Service
+Description=ph Gunicorn Service
 After=network.target
 
 [Service]
-# Adjust 'User=' to whichever user should own/run the garden process
+# Adjust 'User=' to whichever user should own/run the ph process
 User=dave
-WorkingDirectory=/home/dave/garden
+WorkingDirectory=/home/dave/ph
 
 # Use bash so we can 'source' the venv
-ExecStart=/bin/bash -c 'cd /home/dave/garden && source venv/bin/activate && gunicorn -w 1 -k eventlet wsgi:app --bind 0.0.0.0:8000 --log-level=debug'
+ExecStart=/bin/bash -c 'cd /home/dave/ph && source venv/bin/activate && gunicorn -w 1 -k eventlet wsgi:app --bind 0.0.0.0:8000 --log-level=debug'
 
 # Automatically restart if it crashes
 Restart=always
@@ -52,20 +52,20 @@ def main():
     # because you indicated you already did a git pull.
 
     # 4) Create & activate a virtual environment
-    if not os.path.isdir("/home/dave/garden/venv"):
+    if not os.path.isdir("/home/dave/ph/venv"):
         print("\n=== Creating virtual environment ===")
-        run_command(["python3", "-m", "venv", "/home/dave/garden/venv"],
-                    "Create Python venv in /home/dave/garden/venv")
+        run_command(["python3", "-m", "venv", "/home/dave/ph/venv"],
+                    "Create Python venv in /home/dave/ph/venv")
     else:
         print("\n=== venv already exists. Skipping creation. ===")
 
     # 5) Upgrade pip & install requirements
-    run_command(["/home/dave/garden/venv/bin/pip", "install", "--upgrade", "pip"],
+    run_command(["/home/dave/ph/venv/bin/pip", "install", "--upgrade", "pip"],
                 "Upgrade pip in the venv")
 
-    requirements_file = "/home/dave/garden/requirements.txt"
+    requirements_file = "/home/dave/ph/requirements.txt"
     if os.path.isfile(requirements_file):
-        run_command(["/home/dave/garden/venv/bin/pip", "install", "-r", requirements_file],
+        run_command(["/home/dave/ph/venv/bin/pip", "install", "-r", requirements_file],
                     "Install Python dependencies from requirements.txt")
     else:
         print(f"\n=== {requirements_file} not found! Skipping pip install -r. ===")
@@ -78,13 +78,13 @@ def main():
     # 7) Reload systemd so it sees the new service
     run_command(["systemctl", "daemon-reload"], "Reload systemd")
 
-    # 8) Enable and start the garden service
-    run_command(["systemctl", "enable", "garden.service"], "Enable garden.service on startup")
-    run_command(["systemctl", "start", "garden.service"], "Start garden.service now")
+    # 8) Enable and start the ph service
+    run_command(["systemctl", "enable", "ph.service"], "Enable ph.service on startup")
+    run_command(["systemctl", "start", "ph.service"], "Start ph.service now")
 
     print("\n=== Setup complete! ===")
-    print("You can check logs with:  journalctl -u garden.service -f")
-    print("You can check status with: systemctl status garden.service")
+    print("You can check logs with:  journalctl -u ph.service -f")
+    print("You can check status with: systemctl status ph.service")
 
 
 if __name__ == "__main__":

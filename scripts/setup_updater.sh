@@ -13,27 +13,27 @@ exec > >(tee -a "$LOGFILE") 2>&1
 echo "[$(date)] Starting setup_updater.sh..."
 
 # 1) Copy the systemd unit to the correct location
-echo "[$(date)] Copying garden-updater.service to /etc/systemd/system/"
-sudo cp /home/dave/garden/scripts/garden-updater.service /etc/systemd/system/
+echo "[$(date)] Copying ph-updater.service to /etc/systemd/system/"
+sudo cp /home/dave/ph/scripts/ph-updater.service /etc/systemd/system/
 
 # 2) Reload systemd
 echo "[$(date)] Reloading systemd daemon..."
 sudo systemctl daemon-reload
 
 # 3) Optional: enable so it can be started at any time
-echo "[$(date)] Enabling garden-updater.service..."
-sudo systemctl enable garden-updater.service
+echo "[$(date)] Enabling ph-updater.service..."
+sudo systemctl enable ph-updater.service
 
 # 4) Make sure the script is executable
-echo "[$(date)] Ensuring garden_update.sh is executable..."
-sudo chmod +x /home/dave/garden/scripts/garden_update.sh
+echo "[$(date)] Ensuring ph_update.sh is executable..."
+sudo chmod +x /home/dave/ph/scripts/ph_update.sh
 
 # 5) Make sure the hostname script is executable
 echo "[$(date)] Ensuring change_hostname.sh is executable..."
-sudo chmod +x /home/dave/garden/scripts/change_hostname.sh
+sudo chmod +x /home/dave/ph/scripts/change_hostname.sh
 
 # 6) Make sure the hostname avahi is executable
 echo "[$(date)] Ensuring change_hostname.sh is executable..."
-#sudo chmod +x /home/dave/garden/scripts/flush_avahi.sh
+#sudo chmod +x /home/dave/ph/scripts/flush_avahi.sh
 
 echo "[$(date)] setup_updater.sh completed."
