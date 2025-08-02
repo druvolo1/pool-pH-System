@@ -217,7 +217,7 @@
                     if (response.ok) {
                         // Start countdown with duration from server response
                         startCountdown(type, amount, data.duration);
-                        alert(`pH ${type.toUpperCase()} dispense triggered: ${data.message}`);
+                        // alert(`pH ${type.toUpperCase()} dispense triggered: ${data.message}`); // Commented out to remove popup
                         refreshDosageInfo();
                     } else {
                         alert(`Failed to dispense pH ${type}: ${data.message}`);
