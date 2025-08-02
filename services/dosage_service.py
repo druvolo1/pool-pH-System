@@ -141,27 +141,28 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
 
     def dispense_task():
         from app import socketio  # Import here to avoid circular import
+        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
         try:
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
+            print(f"[AutoDosing] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
             turn_on_relay(relay_port)
             eventlet.sleep(duration_sec)
             turn_off_relay(relay_port)
-            # Log after successful completion
+            print(f"[AutoDosing] Turning OFF Relay {relay_port} after {duration_sec:.2f} seconds...")
             manual_dispense(dispense_type, amount_ml)
-            print(f"[AutoDosing] Completed dispense of {amount_ml:.2f} ml pH {dispense_type}")
             socketio.emit('dose_complete', {'type': dispense_type, 'amount': amount_ml})
         except Exception as e:
             print(f"[AutoDosing] Error during dispense of {dispense_type}: {str(e)}")
-            # Optionally, turn off relay on error to avoid stuck state
-            turn_off_relay(relay_port)
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
         finally:
-            # Clear active task
-            global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
-            active_dosing_task = None
-            active_relay_port = None
-            active_dosing_type = None
-            active_dosing_amount = None
+            # Clear active task only if this is the current task
+            if active_dosing_task and active_dosing_task == eventlet.getcurrent():
+                print(f"[AutoDosing] Clearing state for {dispense_type}")
+                active_dosing_task = None
+                active_relay_port = None
+                active_dosing_type = None
+                active_dosing_amount = None
+            turn_off_relay(relay_port)  # Ensure relay is off
 
     # Cancel any existing task
     global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
