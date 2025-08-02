@@ -84,7 +84,7 @@ def manual_dosage():
             # Emit complete event
             socketio.emit('dose_complete', {'type': dispense_type, 'amount': amount_ml})
         except Exception as e:
-            print(f"[Manual Dispense] Error during dispense: {e}")
+            print(f"[Manual Dispense] Error during dispense: {str(e)}")
             turn_off_relay(relay_port)  # Ensure relay is off on error
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
         finally:
@@ -100,15 +100,16 @@ def manual_dosage():
     if active_dosing_task:
         try:
             active_dosing_task.kill()
-            if active_relay_port:
+            if active_relay_port is not None:
                 turn_off_relay(active_relay_port)
-            print(f"[Manual Dispense] Cancelled previous dosing task: {active_dosing_type}")
+            print(f"[Manual Dispense] Cancelled previous dosing task: {active_dosing_type or 'unknown'}")
         except Exception as e:
-            print(f"[Manual Dispense] Error cancelling previous task: {e}")
-        active_dosing_task = None
-        active_relay_port = None
-        active_dosing_type = None
-        active_dosing_amount = None
+            print(f"[Manual Dispense] Error cancelling previous task: {str(e)}")
+        finally:
+            active_dosing_task = None
+            active_relay_port = None
+            active_dosing_type = None
+            active_dosing_amount = None
 
     # Start new task
     active_dosing_task = eventlet.spawn(dispense_task)
@@ -138,16 +139,18 @@ def stop_dosage():
     try:
         # Kill the active dosing task
         active_dosing_task.kill()
-        if active_relay_port:
+        if active_relay_port is not None:
             turn_off_relay(active_relay_port)
         else:
             print("[Stop Dosing] Warning: No active relay port to turn off")
-        
-        print(f"[Stop Dosing] Stopped dosing: {active_dosing_type}, {active_dosing_amount:.2f} ml")
+
+        type_str = active_dosing_type or 'unknown'
+        amount_str = f"{active_dosing_amount:.2f}" if active_dosing_amount is not None else 'unknown'
+        print(f"[Stop Dosing] Stopped dosing: {type_str}, {amount_str} ml")
         
         # Emit stopped event
         socketio.emit('dose_stopped', {
-            'type': active_dosing_type or 'unknown',
+            'type': type_str,
             'amount': active_dosing_amount or 0
         })
 
@@ -159,5 +162,14 @@ def stop_dosage():
 
         return jsonify({"status": "success", "message": "Dosing stopped successfully."}), 200
     except Exception as e:
-        print(f"[Stop Dosing] Error stopping dosing: {str(e)}")
-        return jsonify({"status": "failure", "message": f"Failed to stop dosing: {str(e)}"}), 500
+        error_msg = str(e) or 'Unknown error during stopping'
+        print(f"[Stop Dosing] Error stopping dosing: {error_msg}")
+        # Ensure relay is off even on error
+        if active_relay_port is not None:
+            turn_off_relay(active_relay_port)
+        # Clear state on error to prevent stuck relay
+        active_dosing_task = None
+        active_relay_port = None
+        active_dosing_type = None
+        active_dosing_amount = None
+        return jsonify({"status": "failure", "message": f"Failed to stop dosing: {error_msg}"}), 500

@@ -151,7 +151,7 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
             print(f"[AutoDosing] Completed dispense of {amount_ml:.2f} ml pH {dispense_type}")
             socketio.emit('dose_complete', {'type': dispense_type, 'amount': amount_ml})
         except Exception as e:
-            print(f"[AutoDosing] Error during dispense of {dispense_type}: {e}")
+            print(f"[AutoDosing] Error during dispense of {dispense_type}: {str(e)}")
             # Optionally, turn off relay on error to avoid stuck state
             turn_off_relay(relay_port)
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
@@ -166,14 +166,18 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
     # Cancel any existing task
     global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
     if active_dosing_task:
-        active_dosing_task.kill()
-        if active_relay_port:
-            turn_off_relay(active_relay_port)
-        print(f"[AutoDosing] Cancelled previous dosing task: {active_dosing_type}")
-        active_dosing_task = None
-        active_relay_port = None
-        active_dosing_type = None
-        active_dosing_amount = None
+        try:
+            active_dosing_task.kill()
+            if active_relay_port is not None:
+                turn_off_relay(active_relay_port)
+            print(f"[AutoDosing] Cancelled previous dosing task: {active_dosing_type or 'unknown'}")
+        except Exception as e:
+            print(f"[AutoDosing] Error cancelling previous task: {str(e)}")
+        finally:
+            active_dosing_task = None
+            active_relay_port = None
+            active_dosing_type = None
+            active_dosing_amount = None
 
     # Start new task
     active_dosing_task = eventlet.spawn(dispense_task)
