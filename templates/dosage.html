@@ -49,7 +49,7 @@
             <p><strong>Type:</strong> <span id="dosing-type"></span></p>
             <p><strong>Amount:</strong> <span id="dosing-amount"></span> ml</p>
             <p><strong>Remaining Time:</strong> <span id="remaining-time"></span> seconds</p>
-            <button id="stop-dosing" class="secondary-btn">Stop Dosing</button>
+            <button id="stop-dosing" class="stop-btn">Stop Dosing</button>
         </div>
 
         <!-- Wrap these in a .dosage-section so they can be flexed/responsive -->
@@ -184,8 +184,8 @@
                 remainingSeconds = Math.round(duration);
                 updateRemainingTime();
                 document.getElementById('dosing-status').style.display = 'block';
-                document.getElementById('stop-dosing').disabled = false; // Enable stop button
-                document.getElementById('stop-dosing').style.opacity = 1; // Ensure visible
+                document.getElementById('stop-dosing').disabled = false;
+                document.getElementById('stop-dosing').style.opacity = 1;
             }
 
             // Function to update the remaining time display
@@ -200,8 +200,8 @@
                     timerInterval = null;
                 }
                 document.getElementById('dosing-status').style.display = 'none';
-                document.getElementById('stop-dosing').disabled = true; // Disable stop button
-                document.getElementById('stop-dosing').style.opacity = 0.5; // Dim when inactive
+                document.getElementById('stop-dosing').disabled = true;
+                document.getElementById('stop-dosing').style.opacity = 0.5;
             }
 
             // Reusable dispense function
@@ -218,12 +218,10 @@
                     });
                     const data = await response.json();
                     if (response.ok) {
-                        // Start countdown with duration from server response
                         startCountdown(type, amount, data.duration);
-                        // alert(`pH ${type.toUpperCase()} dispense triggered: ${data.message}`); // Commented out to remove popup
                         refreshDosageInfo();
                     } else {
-                        alert(`Failed to dispense pH ${type}: ${data.message}`);
+                        alert(`Failed to dispense pH ${type}: ${data.message || 'Unknown error'}`);
                     }
                 } catch (error) {
                     console.error(`Error dispensing pH ${type}:`, error);
@@ -241,9 +239,9 @@
                     });
                     const data = await response.json();
                     if (response.ok) {
-                        console.log('Dosing stopped successfully');
+                        console.log('Dosing stopped successfully:', data.message);
                     } else {
-                        alert(`Failed to stop dosing: ${data.message}`);
+                        alert(`Failed to stop dosing: ${data.message || 'Unknown server error'}`);
                     }
                 } catch (error) {
                     console.error('Error stopping dosing:', error);

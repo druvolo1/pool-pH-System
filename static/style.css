@@ -93,25 +93,25 @@ h3 {
 }
 
 .dosing-status {
-  background: rgba(244, 197, 49, 0.1); /* Subtle gold tint to match theme */
-  border: 2px solid #f4c531; /* Gold border for emphasis */
-  box-shadow: 0 4px 12px rgba(244, 197, 49, 0.3); /* Stronger glow */
-  transition: all 0.3s ease; /* Smooth show/hide */
+  background: rgba(244, 197, 49, 0.1);
+  border: 2px solid #f4c531;
+  box-shadow: 0 4px 12px rgba(244, 197, 49, 0.3);
+  transition: all 0.3s ease;
 }
 
 .dosing-status:not([style*="display: none"]) {
-  animation: pulse 1.5s infinite; /* Pulse effect when visible */
+  animation: pulse 1.5s infinite;
 }
 
 .dosing-status h2 {
-  color: #f4c531; /* Match h3 for emphasis */
+  color: #f4c531;
   font-size: 24px;
   margin-bottom: 15px;
 }
 
 .dosing-status p {
-  font-size: 16px; /* Match input font-size for consistency */
-  color: #e0e0e0; /* High-contrast text */
+  font-size: 16px;
+  color: #e0e0e0;
   margin: 10px 0;
 }
 
@@ -210,6 +210,14 @@ button:hover {
   transform: scale(1.05);
 }
 
+button:disabled {
+  background: #555;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+  opacity: 0.5;
+}
+
 /* Secondary Buttons */
 .secondary-btn {
   background: linear-gradient(to right, #b0b0b0, #757575);
@@ -217,6 +225,16 @@ button:hover {
 }
 .secondary-btn:hover {
   background: linear-gradient(to right, #757575, #505050);
+}
+
+/* Stop Button */
+.stop-btn {
+  background: linear-gradient(to right, #dc3545, #c82333);
+  color: #fff;
+}
+.stop-btn:hover:not(:disabled) {
+  background: linear-gradient(to right, #c82333, #bd2130);
+  transform: scale(1.05);
 }
 
 /* =========================
