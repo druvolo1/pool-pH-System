@@ -1,7 +1,6 @@
 # File: services/dosage_service.py
 
 import eventlet
-from app import socketio
 from services.ph_service import get_latest_ph_reading
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from api.settings import load_settings
@@ -141,20 +140,21 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
     print(f"[AutoDosing] Starting dispense of {amount_ml:.2f} ml pH {dispense_type} -> Relay {relay_port}, ~{duration_sec:.2f}s")
 
     def dispense_task():
+        from app import socketio  # Import here to avoid circular import
         try:
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
             turn_on_relay(relay_port)
             eventlet.sleep(duration_sec)
             turn_off_relay(relay_port)
+            # Log after successful completion
             manual_dispense(dispense_type, amount_ml)
             print(f"[AutoDosing] Completed dispense of {amount_ml:.2f} ml pH {dispense_type}")
             socketio.emit('dose_complete', {'type': dispense_type, 'amount': amount_ml})
         except Exception as e:
             print(f"[AutoDosing] Error during dispense of {dispense_type}: {e}")
+            # Optionally, turn off relay on error to avoid stuck state
             turn_off_relay(relay_port)
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
 
     # Spawn the task asynchronously
     eventlet.spawn(dispense_task)
-
-    # Return immediately (the API can respond with success here)

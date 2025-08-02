@@ -8,7 +8,6 @@ from api.settings import load_settings
 from services.auto_dose_state import auto_dose_state
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from services.dosage_service import manual_dispense, get_dosage_info
-from app import socketio  # Absolute import from app.py at project root
 
 dosing_blueprint = Blueprint('dosing', __name__)
 
@@ -68,6 +67,7 @@ def manual_dosage():
         return jsonify({"status": "failure", "error": "Calculated run time is 0 or negative."}), 400
 
     def dispense_task():
+        from app import socketio  # Import here to avoid circular import
         try:
             # Emit start event
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
