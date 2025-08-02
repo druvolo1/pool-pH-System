@@ -2,9 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- Ensure mobile responsiveness -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Dosage Info</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
@@ -12,17 +10,15 @@
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 </head>
 <body>
-
     <!-- Navigation Menu -->
     <nav>
         <ul>
             <li><a href="/">Home</a></li>
             <li><a href="/dosage">Dosage</a></li>
             <li><a href="/calibration">Calibration</a></li>
-            <!--<li><a href="/configuration">Configuration</a></li>-->
             <li><a href="/settings">Settings</a></li>
             <li><a href="/logs">Logs</a></li>
-          </ul>
+        </ul>
     </nav>
 
     <main>
@@ -57,11 +53,9 @@
 
         <!-- Wrap these in a .dosage-section so they can be flexed/responsive -->
         <div class="dosage-section">
-
             <!-- pH Up Dosing -->
             <div class="data-container">
                 <h2>pH Up Dosing</h2>
-
                 <!-- Calculated Dosing -->
                 <h3>Calculated Dosing</h3>
                 <p>
@@ -69,13 +63,10 @@
                     <span id="ph-up-amount">{{ dosage_data.ph_up_amount }}</span> ml
                 </p>
                 <button id="ph-up-calc-dispense">Dispense Calculated</button>
-
                 {% if dosage_data.feedback_up %}
                     <p class="error-message">{{ dosage_data.feedback_up|safe }}</p>
                 {% endif %}
-
                 <hr style="margin: 1em 0;" />
-
                 <!-- Manual Dosing -->
                 <h3>Manual Dosing</h3>
                 <label for="ph-up-manual-amount">Manual Dose Amount (ml):</label>
@@ -86,7 +77,6 @@
             <!-- pH Down Dosing -->
             <div class="data-container">
                 <h2>pH Down Dosing</h2>
-
                 <!-- Calculated Dosing -->
                 <h3>Calculated Dosing</h3>
                 <p>
@@ -94,13 +84,10 @@
                     <span id="ph-down-amount">{{ dosage_data.ph_down_amount }}</span> ml
                 </p>
                 <button id="ph-down-calc-dispense">Dispense Calculated</button>
-
                 {% if dosage_data.feedback_down %}
                     <p class="error-message">{{ dosage_data.feedback_down|safe }}</p>
                 {% endif %}
-
                 <hr style="margin: 1em 0;" />
-
                 <!-- Manual Dosing -->
                 <h3>Manual Dosing</h3>
                 <label for="ph-down-manual-amount">Manual Dose Amount (ml):</label>
@@ -113,7 +100,7 @@
     <!-- RESPONSIVE LOGIC -->
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            const socket = io.connect(window.location.origin);
+            const socket = io.connect(window.location.origin, { transports: ['websocket'] });
 
             // Refresh dosage info from server
             async function refreshDosageInfo() {
@@ -121,8 +108,8 @@
                     const response = await fetch('/api/dosage/info');
                     const d = await response.json();
 
-                    document.getElementById('current-ph').textContent     = d.current_ph;
-                    document.getElementById('ph-up-amount').textContent   = d.ph_up_amount;
+                    document.getElementById('current-ph').textContent = d.current_ph;
+                    document.getElementById('ph-up-amount').textContent = d.ph_up_amount;
                     document.getElementById('ph-down-amount').textContent = d.ph_down_amount;
                     document.getElementById('last-dose-time').textContent = d.last_dose_time;
                     document.getElementById('last-dose-type').textContent = d.last_dose_type;
@@ -141,24 +128,35 @@
                         }
                     }
                     document.getElementById('dosed-today').textContent = dosedToday;
-
                 } catch (err) {
                     console.error("Error refreshing dosage info:", err);
                 }
             }
+
+            socket.on('connect', () => {
+                console.log("Connected to Socket.IO server");
+            });
 
             socket.on('ph_update', function(data) {
                 console.log("Received pH update via socket:", data.ph);
                 refreshDosageInfo();
             });
 
-            // New: Listen for dose start and complete events via Socket.IO (for auto-dosing or multi-client sync)
             socket.on('dose_start', function(data) {
+                console.log(`Dose started: ${data.type}, ${data.amount} ml, ${data.duration}s`);
                 startCountdown(data.type, data.amount, data.duration);
             });
 
             socket.on('dose_complete', function(data) {
+                console.log(`Dose completed: ${data.type}, ${data.amount} ml`);
                 stopCountdown();
+                refreshDosageInfo();
+            });
+
+            socket.on('dose_error', function(data) {
+                console.error(`Dosing error: ${data.type}, ${data.error}`);
+                stopCountdown();
+                alert(`Dosing error for pH ${data.type.toUpperCase()}: ${data.error}`);
                 refreshDosageInfo();
             });
 
@@ -175,7 +173,7 @@
                 }
 
                 document.getElementById('dosing-type').textContent = type.toUpperCase();
-                document.getElementById('dosing-amount').textContent = amount;
+                document.getElementById('dosing-amount').textContent = amount.toFixed(2);
                 remainingSeconds = Math.round(duration);
                 updateRemainingTime();
                 document.getElementById('dosing-status').style.display = 'block';
@@ -191,13 +189,14 @@
 
             // Function to update the remaining time display
             function updateRemainingTime() {
-                document.getElementById('remaining-time').textContent = remainingSeconds;
+                document.getElementById('remaining-time').textContent = remainingSeconds.toFixed(0);
             }
 
             // Function to stop the countdown
             function stopCountdown() {
                 if (timerInterval) {
                     clearInterval(timerInterval);
+                    timerInterval = null;
                 }
                 document.getElementById('dosing-status').style.display = 'none';
             }
@@ -218,14 +217,14 @@
                     if (response.ok) {
                         // Start countdown with duration from server response
                         startCountdown(type, amount, data.duration);
-                        alert(`pH ${type.toUpperCase()} dispense triggered: ` + data.message);
+                        alert(`pH ${type.toUpperCase()} dispense triggered: ${data.message}`);
                         refreshDosageInfo();
                     } else {
                         alert(`Failed to dispense pH ${type}: ${data.message}`);
                     }
                 } catch (error) {
                     console.error(`Error dispensing pH ${type}:`, error);
-                    alert(`Failed to dispense pH ${type}.`);
+                    alert(`Failed to dispense pH ${type}: Network error or server unavailable.`);
                 }
             }
 
@@ -252,6 +251,5 @@
             });
         });
     </script>
-
 </body>
 </html>
