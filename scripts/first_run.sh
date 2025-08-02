@@ -6,19 +6,16 @@ import sys
 SERVICE_PATH = "/etc/systemd/system/ph.service"
 
 SERVICE_CONTENT = """[Unit]
-Description=ph Gunicorn Service
+Description=Pool pH System Web App
 After=network.target
 
 [Service]
-# Adjust 'User=' to whichever user should own/run the ph process
 User=dave
-WorkingDirectory=/home/dave/ph
-
-# Use bash so we can 'source' the venv
-ExecStart=/bin/bash -c 'cd /home/dave/ph && source venv/bin/activate && gunicorn -w 1 -k eventlet wsgi:app --bind 0.0.0.0:8000 --log-level=debug'
-
-# Automatically restart if it crashes
+WorkingDirectory=/home/dave/pool-pH-System
+Environment="PATH=/home/dave/pool-pH-System/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/home/dave/pool-pH-System/venv/bin/gunicorn -w 1 --worker-class eventlet -b 0.0.0.0:8000 wsgi:app --log-level=debug
 Restart=always
+RestartSec=3
 
 [Install]
 WantedBy=multi-user.target
@@ -32,7 +29,11 @@ def run_command(cmd_list, description=None):
     if description:
         print(f"\n=== {description} ===")
     print("Running:", " ".join(cmd_list))
-    subprocess.run(cmd_list, check=True)
+    try:
+        subprocess.run(cmd_list, check=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error running command: {e}")
+        sys.exit(1)
 
 def main():
     # 1) Must run as root
@@ -68,24 +69,28 @@ def main():
         run_command(["/home/dave/pool-pH-System/venv/bin/pip", "install", "-r", requirements_file],
                     "Install Python dependencies from requirements.txt")
     else:
-        print(f"\n=== {requirements_file} not found! Skipping pip install -r. ===")
+        print(f"\n=== {requirements_file} not found! Installing core dependencies ===")
+        run_command(["/home/dave/pool-pH-System/venv/bin/pip", "install", "gunicorn", "flask", "flask-socketio", "eventlet"],
+                    "Install core Python dependencies")
 
     # 6) Create the systemd service file
     print(f"\n=== Creating systemd service at {SERVICE_PATH} ===")
     with open(SERVICE_PATH, "w") as f:
         f.write(SERVICE_CONTENT)
 
-    # 7) Reload systemd so it sees the new service
+    # 7) Set permissions for service file
+    run_command(["chmod", "644", SERVICE_PATH], "Set permissions for ph.service")
+
+    # 8) Reload systemd so it sees the new service
     run_command(["systemctl", "daemon-reload"], "Reload systemd")
 
-    # 8) Enable and start the ph service
+    # 9) Enable and start the ph service
     run_command(["systemctl", "enable", "ph.service"], "Enable ph.service on startup")
     run_command(["systemctl", "start", "ph.service"], "Start ph.service now")
 
     print("\n=== Setup complete! ===")
-    print("You can check logs with:  journalctl -u ph.service -f")
+    print("You can check logs with: journalctl -u ph.service -f")
     print("You can check status with: systemctl status ph.service")
-
 
 if __name__ == "__main__":
     main()
