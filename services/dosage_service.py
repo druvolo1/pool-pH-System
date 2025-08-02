@@ -5,9 +5,7 @@ from services.ph_service import get_latest_ph_reading
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from api.settings import load_settings
 from services.log_service import log_dosing_event
-
-# Global variables to track active dosing task (shared with api/dosing.py)
-from api.dosing import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
 
 def get_dosage_info():
     current_ph = get_latest_ph_reading()
@@ -120,8 +118,6 @@ def perform_auto_dose(settings):
         return ("none", 0.0)
 
 def do_relay_dispense(dispense_type, amount_ml, settings):
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
-
     max_dosing = settings.get("max_dosing_amount", 0)
     if max_dosing > 0 and amount_ml > max_dosing:
         amount_ml = max_dosing
@@ -144,28 +140,31 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
     print(f"[AutoDosing] Starting dispense of {amount_ml:.2f} ml pH {dispense_type} -> Relay {relay_port}, ~{duration_sec:.2f}s")
 
     def dispense_task():
-        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
         from app import socketio  # Import here to avoid circular import
         try:
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
             turn_on_relay(relay_port)
             eventlet.sleep(duration_sec)
             turn_off_relay(relay_port)
+            # Log after successful completion
             manual_dispense(dispense_type, amount_ml)
             print(f"[AutoDosing] Completed dispense of {amount_ml:.2f} ml pH {dispense_type}")
             socketio.emit('dose_complete', {'type': dispense_type, 'amount': amount_ml})
         except Exception as e:
             print(f"[AutoDosing] Error during dispense of {dispense_type}: {e}")
+            # Optionally, turn off relay on error to avoid stuck state
             turn_off_relay(relay_port)
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
         finally:
             # Clear active task
+            global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
             active_dosing_task = None
             active_relay_port = None
             active_dosing_type = None
             active_dosing_amount = None
 
     # Cancel any existing task
+    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
     if active_dosing_task:
         active_dosing_task.kill()
         if active_relay_port:

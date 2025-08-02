@@ -8,14 +8,9 @@ from api.settings import load_settings
 from services.auto_dose_state import auto_dose_state
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from services.dosage_service import manual_dispense, get_dosage_info
+from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
 
 dosing_blueprint = Blueprint('dosing', __name__)
-
-# Global variables to track active dosing task and relay
-active_dosing_task = None
-active_relay_port = None
-active_dosing_type = None
-active_dosing_amount = None
 
 @dosing_blueprint.route('/info', methods=['GET'])
 def get_current_dosage_info():
@@ -46,8 +41,6 @@ def manual_dosage():
       "amount": 5.0     # ml to dispense
     }
     """
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
-
     data = request.get_json()
     dispense_type = data.get("type")  # 'up' or 'down'
     amount_ml = data.get("amount", 0.0)
@@ -75,7 +68,6 @@ def manual_dosage():
         return jsonify({"status": "failure", "error": "Calculated run time is 0 or negative."}), 400
 
     def dispense_task():
-        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
         from app import socketio  # Import here to avoid circular import
         try:
             # Emit start event
@@ -94,15 +86,18 @@ def manual_dosage():
         except Exception as e:
             print(f"[Manual Dispense] Error during dispense: {e}")
             turn_off_relay(relay_port)  # Ensure relay is off on error
+            # Optionally emit an error event
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
         finally:
             # Clear active task
+            global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
             active_dosing_task = None
             active_relay_port = None
             active_dosing_type = None
             active_dosing_amount = None
 
     # Cancel any existing task
+    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
     if active_dosing_task:
         active_dosing_task.kill()
         if active_relay_port:
