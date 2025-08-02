@@ -49,6 +49,7 @@
             <p><strong>Type:</strong> <span id="dosing-type"></span></p>
             <p><strong>Amount:</strong> <span id="dosing-amount"></span> ml</p>
             <p><strong>Remaining Time:</strong> <span id="remaining-time"></span> seconds</p>
+            <button id="stop-dosing" class="secondary-btn">Stop Dosing</button>
         </div>
 
         <!-- Wrap these in a .dosage-section so they can be flexed/responsive -->
@@ -160,6 +161,12 @@
                 refreshDosageInfo();
             });
 
+            socket.on('dose_stopped', function(data) {
+                console.log(`Dose stopped: ${data.type}, ${data.amount} ml`);
+                stopCountdown();
+                refreshDosageInfo();
+            });
+
             await refreshDosageInfo();
 
             // Countdown timer variables
@@ -177,14 +184,8 @@
                 remainingSeconds = Math.round(duration);
                 updateRemainingTime();
                 document.getElementById('dosing-status').style.display = 'block';
-
-                timerInterval = setInterval(() => {
-                    remainingSeconds--;
-                    updateRemainingTime();
-                    if (remainingSeconds <= 0) {
-                        stopCountdown();
-                    }
-                }, 1000);
+                document.getElementById('stop-dosing').disabled = false; // Enable stop button
+                document.getElementById('stop-dosing').style.opacity = 1; // Ensure visible
             }
 
             // Function to update the remaining time display
@@ -199,6 +200,8 @@
                     timerInterval = null;
                 }
                 document.getElementById('dosing-status').style.display = 'none';
+                document.getElementById('stop-dosing').disabled = true; // Disable stop button
+                document.getElementById('stop-dosing').style.opacity = 0.5; // Dim when inactive
             }
 
             // Reusable dispense function
@@ -227,6 +230,29 @@
                     alert(`Failed to dispense pH ${type}: Network error or server unavailable.`);
                 }
             }
+
+            // Stop dosing function
+            async function stopDosing() {
+                try {
+                    const response = await fetch('/api/dosage/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        console.log('Dosing stopped successfully');
+                    } else {
+                        alert(`Failed to stop dosing: ${data.message}`);
+                    }
+                } catch (error) {
+                    console.error('Error stopping dosing:', error);
+                    alert('Failed to stop dosing: Network error or server unavailable.');
+                }
+            }
+
+            // Stop button event listener
+            document.getElementById('stop-dosing').addEventListener('click', stopDosing);
 
             // Manual
             document.getElementById('ph-up-dispense').addEventListener('click', () => {

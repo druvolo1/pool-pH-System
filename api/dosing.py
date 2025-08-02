@@ -11,6 +11,12 @@ from services.dosage_service import manual_dispense, get_dosage_info
 
 dosing_blueprint = Blueprint('dosing', __name__)
 
+# Global variables to track active dosing task and relay
+active_dosing_task = None
+active_relay_port = None
+active_dosing_type = None
+active_dosing_amount = None
+
 @dosing_blueprint.route('/info', methods=['GET'])
 def get_current_dosage_info():
     """
@@ -40,6 +46,8 @@ def manual_dosage():
       "amount": 5.0     # ml to dispense
     }
     """
+    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+
     data = request.get_json()
     dispense_type = data.get("type")  # 'up' or 'down'
     amount_ml = data.get("amount", 0.0)
@@ -67,6 +75,7 @@ def manual_dosage():
         return jsonify({"status": "failure", "error": "Calculated run time is 0 or negative."}), 400
 
     def dispense_task():
+        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
         from app import socketio  # Import here to avoid circular import
         try:
             # Emit start event
@@ -85,14 +94,70 @@ def manual_dosage():
         except Exception as e:
             print(f"[Manual Dispense] Error during dispense: {e}")
             turn_off_relay(relay_port)  # Ensure relay is off on error
-            # Optionally emit an error event
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
+        finally:
+            # Clear active task
+            active_dosing_task = None
+            active_relay_port = None
+            active_dosing_type = None
+            active_dosing_amount = None
 
-    # Spawn the task asynchronously
-    eventlet.spawn(dispense_task)
+    # Cancel any existing task
+    if active_dosing_task:
+        active_dosing_task.kill()
+        if active_relay_port:
+            turn_off_relay(active_relay_port)
+        print(f"[Manual Dispense] Cancelled previous dosing task: {active_dosing_type}")
+        active_dosing_task = None
+        active_relay_port = None
+        active_dosing_type = None
+        active_dosing_amount = None
+
+    # Start new task
+    active_dosing_task = eventlet.spawn(dispense_task)
+    active_relay_port = relay_port
+    active_dosing_type = dispense_type
+    active_dosing_amount = amount_ml
 
     return jsonify({
         "status": "success",
         "message": f"Dosing of {amount_ml:.2f} ml of pH {dispense_type} started.",
         "duration": duration_sec
     })
+
+@dosing_blueprint.route('/stop', methods=['POST'])
+def stop_dosage():
+    """
+    Stop the current dosing operation.
+    POST /api/dosage/stop
+    {}
+    """
+    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+    from app import socketio  # Import here to avoid circular import
+
+    if not active_dosing_task:
+        return jsonify({"status": "success", "message": "No active dosing to stop."}), 200
+
+    try:
+        # Kill the active dosing task
+        active_dosing_task.kill()
+        if active_relay_port:
+            turn_off_relay(active_relay_port)
+        print(f"[Stop Dosing] Stopped dosing: {active_dosing_type}, {active_dosing_amount:.2f} ml")
+        
+        # Emit stopped event
+        socketio.emit('dose_stopped', {
+            'type': active_dosing_type,
+            'amount': active_dosing_amount
+        })
+
+        # Clear active task
+        active_dosing_task = None
+        active_relay_port = None
+        active_dosing_type = None
+        active_dosing_amount = None
+
+        return jsonify({"status": "success", "message": "Dosing stopped successfully."}), 200
+    except Exception as e:
+        print(f"[Stop Dosing] Error stopping dosing: {e}")
+        return jsonify({"status": "failure", "error": f"Failed to stop dosing: {str(e)}"}), 500
