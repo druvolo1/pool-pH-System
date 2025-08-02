@@ -49,7 +49,7 @@
             <p><strong>Type:</strong> <span id="dosing-type"></span></p>
             <p><strong>Amount:</strong> <span id="dosing-amount"></span> ml</p>
             <p><strong>Remaining Time:</strong> <span id="remaining-time"></span> seconds</p>
-            <button id="stop-dosing" class="stop-btn">Stop Dosing</button>
+            <button id="stop-dosing" class="stop-btn" disabled>Stop Dosing</button>
         </div>
 
         <!-- Wrap these in a .dosage-section so they can be flexed/responsive -->
@@ -170,35 +170,45 @@
             await refreshDosageInfo();
 
             // Countdown timer variables
-            let timerInterval;
-            let remainingSeconds;
+            let timerInterval = null;
+            let remainingSeconds = 0;
 
             // Function to start the countdown
             function startCountdown(type, amount, duration) {
+                console.log(`Starting countdown: type=${type}, amount=${amount}, duration=${duration}`);
                 if (timerInterval) {
-                    clearInterval(timerInterval); // Clear any existing timer
+                    console.log("Clearing existing timer interval");
+                    clearInterval(timerInterval);
+                    timerInterval = null;
                 }
 
                 document.getElementById('dosing-type').textContent = type.toUpperCase();
                 document.getElementById('dosing-amount').textContent = amount.toFixed(2);
-                remainingSeconds = Math.round(duration);
-                updateRemainingTime();
+                remainingSeconds = Math.max(0, Math.round(duration)); // Ensure non-negative
+                document.getElementById('remaining-time').textContent = remainingSeconds;
                 document.getElementById('dosing-status').style.display = 'block';
                 document.getElementById('stop-dosing').disabled = false;
                 document.getElementById('stop-dosing').style.opacity = 1;
-            }
 
-            // Function to update the remaining time display
-            function updateRemainingTime() {
-                document.getElementById('remaining-time').textContent = remainingSeconds.toFixed(0);
+                timerInterval = setInterval(() => {
+                    console.log(`Countdown tick: ${remainingSeconds} seconds remaining`);
+                    remainingSeconds--;
+                    document.getElementById('remaining-time').textContent = remainingSeconds;
+                    if (remainingSeconds <= 0) {
+                        console.log("Countdown reached zero, stopping");
+                        stopCountdown();
+                    }
+                }, 1000);
             }
 
             // Function to stop the countdown
             function stopCountdown() {
+                console.log("Stopping countdown");
                 if (timerInterval) {
                     clearInterval(timerInterval);
                     timerInterval = null;
                 }
+                remainingSeconds = 0;
                 document.getElementById('dosing-status').style.display = 'none';
                 document.getElementById('stop-dosing').disabled = true;
                 document.getElementById('stop-dosing').style.opacity = 0.5;
@@ -211,6 +221,7 @@
                     return;
                 }
                 try {
+                    console.log(`Sending dispense request: type=${type}, amount=${amount}`);
                     const response = await fetch('/api/dosage/manual', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -218,9 +229,11 @@
                     });
                     const data = await response.json();
                     if (response.ok) {
+                        console.log(`Dispense request successful: ${data.message}`);
                         startCountdown(type, amount, data.duration);
                         refreshDosageInfo();
                     } else {
+                        console.error(`Dispense failed: ${data.message}`);
                         alert(`Failed to dispense pH ${type}: ${data.message || 'Unknown error'}`);
                     }
                 } catch (error) {
@@ -232,6 +245,7 @@
             // Stop dosing function
             async function stopDosing() {
                 try {
+                    console.log("Sending stop dosing request");
                     const response = await fetch('/api/dosage/stop', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -241,6 +255,7 @@
                     if (response.ok) {
                         console.log('Dosing stopped successfully:', data.message);
                     } else {
+                        console.error(`Stop dosing failed: ${data.message}`);
                         alert(`Failed to stop dosing: ${data.message || 'Unknown server error'}`);
                     }
                 } catch (error) {
