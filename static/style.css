@@ -56,6 +56,20 @@ h1 {
   margin-bottom: 10px;
 }
 
+h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #e0e0e0;
+  margin-bottom: 15px;
+}
+
+h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f4c531;
+  margin-bottom: 10px;
+}
+
 .subtitle {
   font-size: 18px;
   color: #b0b0b0;
@@ -76,6 +90,39 @@ h1 {
   text-align: left;
   min-height: 120px;
   overflow: visible;
+}
+
+.dosing-status {
+  background: rgba(244, 197, 49, 0.1); /* Subtle gold tint to match theme */
+  border: 2px solid #f4c531; /* Gold border for emphasis */
+  box-shadow: 0 4px 12px rgba(244, 197, 49, 0.3); /* Stronger glow */
+  transition: all 0.3s ease; /* Smooth show/hide */
+}
+
+.dosing-status:not([style*="display: none"]) {
+  animation: pulse 1.5s infinite; /* Pulse effect when visible */
+}
+
+.dosing-status h2 {
+  color: #f4c531; /* Match h3 for emphasis */
+  font-size: 24px;
+  margin-bottom: 15px;
+}
+
+.dosing-status p {
+  font-size: 16px; /* Match input font-size for consistency */
+  color: #e0e0e0; /* High-contrast text */
+  margin: 10px 0;
+}
+
+.dosing-status p strong {
+  font-weight: 600;
+}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(244, 197, 49, 0.4); }
+  50% { box-shadow: 0 0 10px 5px rgba(244, 197, 49, 0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(244, 197, 49, 0.4); }
 }
 
 .last-updated {
@@ -115,15 +162,15 @@ textarea {
   border: 1px solid #444;
   border-radius: 5px;
   background: #1e1e1e;
-  color: #fafafa;          /* bright text on dark background */
+  color: #fafafa;
   font-size: 16px;
-  caret-color: #ffd700;    /* gold caret for visibility */
+  caret-color: #ffd700;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: #888;             /* mid-grey placeholder */
-  opacity: 1;              /* Firefox */
+  color: #888;
+  opacity: 1;
 }
 
 select {
