@@ -52,20 +52,20 @@ def main():
     # because you indicated you already did a git pull.
 
     # 4) Create & activate a virtual environment
-    if not os.path.isdir("/home/dave/ph/venv"):
+    if not os.path.isdir("/home/dave/pool-pH-System/venv"):
         print("\n=== Creating virtual environment ===")
-        run_command(["python3", "-m", "venv", "/home/dave/ph/venv"],
-                    "Create Python venv in /home/dave/ph/venv")
+        run_command(["python3", "-m", "venv", "/home/dave/pool-pH-System/venv"],
+                    "Create Python venv in /home/dave/pool-pH-System/venv")
     else:
         print("\n=== venv already exists. Skipping creation. ===")
 
     # 5) Upgrade pip & install requirements
-    run_command(["/home/dave/ph/venv/bin/pip", "install", "--upgrade", "pip"],
+    run_command(["/home/dave/pool-pH-System/venv/bin/pip", "install", "--upgrade", "pip"],
                 "Upgrade pip in the venv")
 
-    requirements_file = "/home/dave/ph/requirements.txt"
+    requirements_file = "/home/dave/pool-pH-System/requirements.txt"
     if os.path.isfile(requirements_file):
-        run_command(["/home/dave/ph/venv/bin/pip", "install", "-r", requirements_file],
+        run_command(["/home/dave/pool-pH-System/venv/bin/pip", "install", "-r", requirements_file],
                     "Install Python dependencies from requirements.txt")
     else:
         print(f"\n=== {requirements_file} not found! Skipping pip install -r. ===")

@@ -14,7 +14,7 @@ echo "[$(date)] Starting setup_updater.sh..."
 
 # 1) Copy the systemd unit to the correct location
 echo "[$(date)] Copying ph-updater.service to /etc/systemd/system/"
-sudo cp /home/dave/ph/scripts/ph-updater.service /etc/systemd/system/
+sudo cp /home/dave/pool-pH-System/scripts/ph-updater.service /etc/systemd/system/
 
 # 2) Reload systemd
 echo "[$(date)] Reloading systemd daemon..."
@@ -26,14 +26,14 @@ sudo systemctl enable ph-updater.service
 
 # 4) Make sure the script is executable
 echo "[$(date)] Ensuring ph_update.sh is executable..."
-sudo chmod +x /home/dave/ph/scripts/ph_update.sh
+sudo chmod +x /home/dave/pool-pH-System/scripts/ph_update.sh
 
 # 5) Make sure the hostname script is executable
 echo "[$(date)] Ensuring change_hostname.sh is executable..."
-sudo chmod +x /home/dave/ph/scripts/change_hostname.sh
+sudo chmod +x /home/dave/pool-pH-System/scripts/change_hostname.sh
 
 # 6) Make sure the hostname avahi is executable
 echo "[$(date)] Ensuring change_hostname.sh is executable..."
-#sudo chmod +x /home/dave/ph/scripts/flush_avahi.sh
+#sudo chmod +x /home/dave/pool-pH-System/scripts/flush_avahi.sh
 
 echo "[$(date)] setup_updater.sh completed."
