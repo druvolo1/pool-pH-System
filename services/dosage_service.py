@@ -137,10 +137,22 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
         print(f"[AutoDosing] Calculated run time is 0 for {dispense_type}, skipping.")
         return
 
-    print(f"[AutoDosing] Dispensing {amount_ml:.2f} ml pH {dispense_type} -> Relay {relay_port}, ~{duration_sec:.2f}s")
-    turn_on_relay(relay_port)
-    eventlet.sleep(duration_sec)   # Non-blocking Eventlet sleep
-    turn_off_relay(relay_port)
+    print(f"[AutoDosing] Starting dispense of {amount_ml:.2f} ml pH {dispense_type} -> Relay {relay_port}, ~{duration_sec:.2f}s")
 
-    # Reuse manual_dispense() for logging
-    manual_dispense(dispense_type, amount_ml)
+    def dispense_task():
+        try:
+            turn_on_relay(relay_port)
+            eventlet.sleep(duration_sec)
+            turn_off_relay(relay_port)
+            # Log after successful completion
+            manual_dispense(dispense_type, amount_ml)
+            print(f"[AutoDosing] Completed dispense of {amount_ml:.2f} ml pH {dispense_type}")
+        except Exception as e:
+            print(f"[AutoDosing] Error during dispense of {dispense_type}: {e}")
+            # Optionally, turn off relay on error to avoid stuck state
+            turn_off_relay(relay_port)
+
+    # Spawn the task asynchronously
+    eventlet.spawn(dispense_task)
+
+    # Return immediately (the API can respond with success here)

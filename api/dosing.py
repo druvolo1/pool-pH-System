@@ -8,6 +8,7 @@ from api.settings import load_settings
 from services.auto_dose_state import auto_dose_state
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from services.dosage_service import manual_dispense, get_dosage_info
+from ..app import socketio  # Assuming socketio is defined in the main app.py and imported here; adjust path if needed
 
 dosing_blueprint = Blueprint('dosing', __name__)
 
@@ -66,15 +67,32 @@ def manual_dosage():
     if duration_sec <= 0:
         return jsonify({"status": "failure", "error": "Calculated run time is 0 or negative."}), 400
 
-    turn_on_relay(relay_port)
-    print(f"[Manual Dispense] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
-    eventlet.sleep(duration_sec)
-    turn_off_relay(relay_port)
-    print(f"[Manual Dispense] Turning OFF Relay {relay_port} after {duration_sec:.2f} seconds.")
+    def dispense_task():
+        try:
+            # Emit start event
+            socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
+            
+            print(f"[Manual Dispense] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
+            turn_on_relay(relay_port)
+            eventlet.sleep(duration_sec)
+            turn_off_relay(relay_port)
+            print(f"[Manual Dispense] Turning OFF Relay {relay_port} after {duration_sec:.2f} seconds.")
 
-    manual_dispense(dispense_type, amount_ml)
+            manual_dispense(dispense_type, amount_ml)
+            
+            # Emit complete event
+            socketio.emit('dose_complete', {'type': dispense_type, 'amount': amount_ml})
+        except Exception as e:
+            print(f"[Manual Dispense] Error during dispense: {e}")
+            turn_off_relay(relay_port)  # Ensure relay is off on error
+            # Optionally emit an error event
+            socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
+
+    # Spawn the task asynchronously
+    eventlet.spawn(dispense_task)
 
     return jsonify({
         "status": "success",
-        "message": f"Dispensed {amount_ml:.2f} ml of pH {dispense_type} over {duration_sec:.2f} seconds."
+        "message": f"Dosing of {amount_ml:.2f} ml of pH {dispense_type} started.",
+        "duration": duration_sec
     })

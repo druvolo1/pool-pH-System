@@ -47,6 +47,14 @@
             <p>Auto-dosing monitors the pump state continuously. When the selected pump turns ON, it schedules a pH check and potential dose after the delay, but only once per calendar day if pH is out of range.</p>
         </div>
 
+        <!-- Dosing Status with Countdown Timer -->
+        <div id="dosing-status" class="data-container" style="display: none; background-color: #f0f8ff; border: 1px solid #add8e6;">
+            <h2>Dosing In Progress</h2>
+            <p><strong>Type:</strong> <span id="dosing-type"></span></p>
+            <p><strong>Amount:</strong> <span id="dosing-amount"></span> ml</p>
+            <p><strong>Remaining Time:</strong> <span id="remaining-time"></span> seconds</p>
+        </div>
+
         <!-- Wrap these in a .dosage-section so they can be flexed/responsive -->
         <div class="dosage-section">
 
@@ -144,9 +152,57 @@
                 refreshDosageInfo();
             });
 
+            // New: Listen for dose start and complete events via Socket.IO (for auto-dosing or multi-client sync)
+            socket.on('dose_start', function(data) {
+                startCountdown(data.type, data.amount, data.duration);
+            });
+
+            socket.on('dose_complete', function(data) {
+                stopCountdown();
+                refreshDosageInfo();
+            });
+
             await refreshDosageInfo();
 
-            // Reusable function
+            // Countdown timer variables
+            let timerInterval;
+            let remainingSeconds;
+
+            // Function to start the countdown
+            function startCountdown(type, amount, duration) {
+                if (timerInterval) {
+                    clearInterval(timerInterval); // Clear any existing timer
+                }
+
+                document.getElementById('dosing-type').textContent = type.toUpperCase();
+                document.getElementById('dosing-amount').textContent = amount;
+                remainingSeconds = Math.round(duration);
+                updateRemainingTime();
+                document.getElementById('dosing-status').style.display = 'block';
+
+                timerInterval = setInterval(() => {
+                    remainingSeconds--;
+                    updateRemainingTime();
+                    if (remainingSeconds <= 0) {
+                        stopCountdown();
+                    }
+                }, 1000);
+            }
+
+            // Function to update the remaining time display
+            function updateRemainingTime() {
+                document.getElementById('remaining-time').textContent = remainingSeconds;
+            }
+
+            // Function to stop the countdown
+            function stopCountdown() {
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                }
+                document.getElementById('dosing-status').style.display = 'none';
+            }
+
+            // Reusable dispense function
             async function dispensePh(type, amount) {
                 if (amount <= 0) {
                     alert(`Invalid or zero amount specified for pH ${type.toUpperCase()}.`);
@@ -159,8 +215,14 @@
                         body: JSON.stringify({ type: type, amount: amount })
                     });
                     const data = await response.json();
-                    alert(`pH ${type.toUpperCase()} dispense triggered: ` + data.message);
-                    refreshDosageInfo();
+                    if (response.ok) {
+                        // Start countdown with duration from server response
+                        startCountdown(type, amount, data.duration);
+                        alert(`pH ${type.toUpperCase()} dispense triggered: ` + data.message);
+                        refreshDosageInfo();
+                    } else {
+                        alert(`Failed to dispense pH ${type}: ${data.message}`);
+                    }
                 } catch (error) {
                     console.error(`Error dispensing pH ${type}:`, error);
                     alert(`Failed to dispense pH ${type}.`);
