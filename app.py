@@ -225,10 +225,10 @@ try:
     # register_mdns_pc_hostname(system_name, service_port=8000)
 
     # 2) Also register the pure system name
-    from mdsn import register_mdns_pure_system_name
-    register_mdns_pure_system_name(system_name, service_port=8000)
+    #from mdsn import register_mdns_pure_system_name
+    #register_mdns_pure_system_name(system_name, service_port=8000)
 
-    print(f"[WSGI] Completed mDNS registration for '{system_name}'.")
+    #print(f"[WSGI] Completed mDNS registration for '{system_name}'.")
 except Exception as e:
     print(f"[WSGI] Error in top-level startup code: {e}")
 
