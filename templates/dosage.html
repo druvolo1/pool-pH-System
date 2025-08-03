@@ -129,6 +129,11 @@
                         }
                     }
                     document.getElementById('dosed-today').textContent = dosedToday;
+
+                    // Initialize countdown if dosing is active
+                    if (d.active_dosing && d.active_remaining > 0) {
+                        startCountdown(d.active_type, d.active_amount, d.active_remaining);
+                    }
                 } catch (err) {
                     console.error("Error refreshing dosage info:", err);
                 }
