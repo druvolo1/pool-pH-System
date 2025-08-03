@@ -1,5 +1,3 @@
-# File: api/dosing.py
-
 import time
 import eventlet
 from datetime import datetime
@@ -8,7 +6,7 @@ from api.settings import load_settings
 from services.auto_dose_state import auto_dose_state
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from services.dosage_service import manual_dispense, get_dosage_info
-from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
 
 dosing_blueprint = Blueprint('dosing', __name__)
 
@@ -69,7 +67,7 @@ def manual_dosage():
 
     def dispense_task():
         from app import socketio  # Import here to avoid circular import
-        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
         try:
             # Emit start event
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
@@ -91,10 +89,12 @@ def manual_dosage():
                 active_relay_port = None
                 active_dosing_type = None
                 active_dosing_amount = None
+                active_start_time = None
+                active_duration = None
             turn_off_relay(relay_port)  # Ensure relay is off
 
     # Cancel any existing task
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
     if active_dosing_task:
         try:
             active_dosing_task.kill()
@@ -108,12 +108,16 @@ def manual_dosage():
             active_relay_port = None
             active_dosing_type = None
             active_dosing_amount = None
+            active_start_time = None
+            active_duration = None
 
     # Start new task
     active_dosing_task = eventlet.spawn(dispense_task)
     active_relay_port = relay_port
     active_dosing_type = dispense_type
     active_dosing_amount = amount_ml
+    active_start_time = time.time()
+    active_duration = duration_sec
 
     return jsonify({
         "status": "success",
@@ -128,7 +132,7 @@ def stop_dosage():
     POST /api/dosage/stop
     {}
     """
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
     from app import socketio  # Import here to avoid circular import
 
     if not active_dosing_task:
@@ -180,3 +184,5 @@ def stop_dosage():
         active_relay_port = None
         active_dosing_type = None
         active_dosing_amount = None
+        active_start_time = None
+        active_duration = None

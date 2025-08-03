@@ -1,247 +1,299 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pool-pH Monitoring System</title>
-
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dosage Info</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 </head>
-
 <body>
-  <!-- ───────── NAV ───────── -->
-  <nav>
-    <ul>
-      <li><a href="/">Home</a></li>
-      <li><a href="/dosage">Dosage</a></li>
-      <li><a href="/settings">Settings</a></li>
-      <li><a href="/logs">Logs</a></li>
-    </ul>
-  </nav>
+    <!-- Navigation Menu -->
+    <nav>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/dosage">Dosage</a></li>
+            <li><a href="/calibration">Calibration</a></li>
+            <li><a href="/settings">Settings</a></li>
+            <li><a href="/logs">Logs</a></li>
+        </ul>
+    </nav>
 
-  <!-- ───────── MAIN ───────── -->
-  <main>
-    <h1>Automated Pool Controller</h1>
-    <p class="subtitle">Live status & quick controls.</p>
+    <main>
+        <h1>Dosage Status</h1>
+        <p class="subtitle">Monitor and adjust pH dosing in real-time.</p>
 
-    <!-- ───── pH (existing) ───── -->
-    <section class="data-container">
-      <div class="row-flex" style="justify-content:flex-start;">
-        <div>
-          <label>pH</label>
-          <div id="ph-display">Loading…</div>
-        </div>
-      </div>
-      <div class="last-updated" id="last-updated">Last updated: Never</div>
-    </section>
-
-    <!-- ───── Environment ───── -->
-    <section class="data-container">
-      <h2>Environment</h2>
-      <div class="row-flex">
-        <div>
-          <label>Air Temp</label>
-          <div id="air-temp">–</div>
-        </div>
-        <div>
-          <label>Salt (ppm)</label>
-          <div id="salt-ppm">–</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ───── Pool controls ───── -->
-    <section class="data-container">
-      <h2>Pool</h2>
-      <div class="row-flex">
-        <div style="flex:2">
-          <label>Status (circuit)</label><br>
-          <button id="pool-on" type="button" class="secondary-btn">On</button>
-          <button id="pool-off" type="button" class="secondary-btn">Off</button>
+        <div class="data-container">
+            <h2>Current Status</h2>
+            <p><strong>Current pH:</strong> <span id="current-ph">{{ dosage_data.current_ph }}</span></p>
+            <p><strong>System Volume:</strong> <span id="system-volume">{{ dosage_data.system_volume }}</span></p>
+            <p><strong>Auto Dosing:</strong> <span id="auto-dosing">{{ dosage_data.auto_dosing_enabled }}</span></p>
+            <p><strong>pH Target:</strong> <span id="ph-target">{{ dosage_data.ph_target }}</span></p>
         </div>
 
-        <div>
-          <label>Water Temp</label>
-          <div id="pool-temp">–</div>
-        </div>
-      </div>
-
-      <fieldset style="margin-top:12px;">
-        <legend>Heating</legend>
-        <div class="row-flex">
-          <div style="flex:1">
-            <label>Mode</label>
-            <select id="pool-heat-mode">
-              <option value="0">Off</option>
-              <option value="1">Solar</option>
-              <option value="2">Heater</option>
-              <option value="3">Both</option>
-            </select>
-          </div>
-          <div style="flex:1">
-            <label>Set-Point °F</label>
-            <input type="number" id="pool-setpoint" step="1" min="50" max="104">
-          </div>
-        </div>
-        <button id="pool-heat-save" type="button">Save Heating</button>
-      </fieldset>
-    </section>
-
-    <!-- ───── Spa controls ───── -->
-    <section class="data-container">
-      <h2>Spa</h2>
-      <div class="row-flex">
-        <div style="flex:2">
-          <label>Status (circuit)</label><br>
-          <button id="spa-on" type="button" class="secondary-btn">On</button>
-          <button id="spa-off" type="button" class="secondary-btn">Off</button>
+        <div class="data-container">
+            <h2>Auto-Dose Info</h2>
+            <p><strong>Last Dose Time:</strong> <span id="last-dose-time">{{ dosage_data.last_dose_time }}</span></p>
+            <p><strong>Last Dose Type:</strong> <span id="last-dose-type">{{ dosage_data.last_dose_type }}</span></p>
+            <p><strong>Last Dose Amount:</strong> <span id="last-dose-amount">{{ dosage_data.last_dose_amount }}</span> ml</p>
+            <p><strong>Dosed Today:</strong> <span id="dosed-today">Calculating...</span></p>
+            <p><strong>Next Dose Check:</strong> Triggered by pump turning ON (after configurable delay)</p>
+            <p>Auto-dosing monitors the pump state continuously. When the selected pump turns ON, it schedules a pH check and potential dose after the delay, but only once per calendar day if pH is out of range.</p>
         </div>
 
-        <div>
-          <label>Water Temp</label>
-          <div id="spa-temp">–</div>
+        <!-- Dosing Status with Countdown Timer -->
+        <div id="dosing-status" class="data-container dosing-status" style="display: none;">
+            <h2>Dosing In Progress</h2>
+            <p><strong>Type:</strong> <span id="dosing-type"></span></p>
+            <p><strong>Amount:</strong> <span id="dosing-amount"></span> ml</p>
+            <p><strong>Remaining Time:</strong> <span id="remaining-time"></span> seconds</p>
+            <button id="stop-dosing" class="stop-btn" disabled>Stop Dosing</button>
         </div>
-      </div>
 
-      <fieldset style="margin-top:12px;">
-        <legend>Heating</legend>
-        <div class="row-flex">
-          <div style="flex:1">
-            <label>Mode</label>
-            <select id="spa-heat-mode">
-              <option value="0">Off</option>
-              <option value="1">Solar</option>
-              <option value="2">Heater</option>
-              <option value="3">Both</option>
-            </select>
-          </div>
-          <div style="flex:1">
-            <label>Set-Point °F</label>
-            <input type="number" id="spa-setpoint" step="1" min="50" max="104">
-          </div>
+        <!-- Wrap these in a .dosage-section so they can be flexed/responsive -->
+        <div class="dosage-section">
+            <!-- pH Up Dosing -->
+            <div class="data-container">
+                <h2>pH Up Dosing</h2>
+                <!-- Calculated Dosing -->
+                <h3>Calculated Dosing</h3>
+                <p>
+                    <strong>Calculated Amount:</strong>
+                    <span id="ph-up-amount">{{ dosage_data.ph_up_amount }}</span> ml
+                </p>
+                <button id="ph-up-calc-dispense">Dispense Calculated</button>
+                {% if dosage_data.feedback_up %}
+                    <p class="error-message">{{ dosage_data.feedback_up|safe }}</p>
+                {% endif %}
+                <hr style="margin: 1em 0;" />
+                <!-- Manual Dosing -->
+                <h3>Manual Dosing</h3>
+                <label for="ph-up-manual-amount">Manual Dose Amount (ml):</label>
+                <input type="number" id="ph-up-manual-amount" step="0.1" min="0" placeholder="Enter amount">
+                <button id="ph-up-dispense">Dispense pH Up</button>
+            </div>
+
+            <!-- pH Down Dosing -->
+            <div class="data-container">
+                <h2>pH Down Dosing</h2>
+                <!-- Calculated Dosing -->
+                <h3>Calculated Dosing</h3>
+                <p>
+                    <strong>Calculated Amount:</strong>
+                    <span id="ph-down-amount">{{ dosage_data.ph_down_amount }}</span> ml
+                </p>
+                <button id="ph-down-calc-dispense">Dispense Calculated</button>
+                {% if dosage_data.feedback_down %}
+                    <p class="error-message">{{ dosage_data.feedback_down|safe }}</p>
+                {% endif %}
+                <hr style="margin: 1em 0;" />
+                <!-- Manual Dosing -->
+                <h3>Manual Dosing</h3>
+                <label for="ph-down-manual-amount">Manual Dose Amount (ml):</label>
+                <input type="number" id="ph-down-manual-amount" step="0.1" min="0" placeholder="Enter amount">
+                <button id="ph-down-dispense">Dispense pH Down</button>
+            </div>
         </div>
-        <button id="spa-heat-save" type="button">Save Heating</button>
-      </fieldset>
-    </section>
-  </main>
+    </main>
 
-  <!-- ───────── JS ───────── -->
-  <script>
-    /* ---- constants (adjust if your IDs differ) ---- */
-    const POOL_CIRCUIT_ID = 505;
-    const SPA_CIRCUIT_ID  = 500;
-    const API_URL = "/api/screenlogic/control";
+    <!-- RESPONSIVE LOGIC -->
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const socket = io.connect(window.location.origin, { transports: ['websocket'] });
 
-    /* ---- helper to POST control commands ---- */
-    async function sendCommand(payload) {
-    console.log("Sending payload:", JSON.stringify(payload));  
-      try {
-        const r = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+            // Refresh dosage info from server
+            async function refreshDosageInfo() {
+                try {
+                    const response = await fetch('/api/dosage/info');
+                    const d = await response.json();
+
+                    document.getElementById('current-ph').textContent = d.current_ph;
+                    document.getElementById('ph-up-amount').textContent = d.ph_up_amount;
+                    document.getElementById('ph-down-amount').textContent = d.ph_down_amount;
+                    document.getElementById('last-dose-time').textContent = d.last_dose_time;
+                    document.getElementById('last-dose-type').textContent = d.last_dose_type;
+                    document.getElementById('last-dose-amount').textContent = d.last_dose_amount;
+
+                    // Compute 'Dosed Today'
+                    const lastTime = d.last_dose_time;
+                    let dosedToday = 'No';
+                    if (lastTime !== 'Never' && lastTime !== 'N/A') {
+                        const lastDate = new Date(lastTime);
+                        const today = new Date();
+                        if (lastDate.getFullYear() === today.getFullYear() &&
+                            lastDate.getMonth() === today.getMonth() &&
+                            lastDate.getDate() === today.getDate()) {
+                            dosedToday = 'Yes';
+                        }
+                    }
+                    document.getElementById('dosed-today').textContent = dosedToday;
+
+                    // Initialize countdown if dosing is active
+                    if (d.active_dosing && d.active_remaining > 0) {
+                        startCountdown(d.active_type, d.active_amount, d.active_remaining);
+                    }
+                } catch (err) {
+                    console.error("Error refreshing dosage info:", err);
+                }
+            }
+
+            socket.on('connect', () => {
+                console.log("Connected to Socket.IO server");
+            });
+
+            socket.on('ph_update', function(data) {
+                console.log("Received pH update via socket:", data.ph);
+                refreshDosageInfo();
+            });
+
+            socket.on('dose_start', function(data) {
+                console.log(`Dose started: ${data.type}, ${data.amount} ml, ${data.duration}s`);
+                startCountdown(data.type, data.amount, data.duration);
+            });
+
+            socket.on('dose_complete', function(data) {
+                console.log(`Dose completed: ${data.type}, ${data.amount} ml`);
+                stopCountdown();
+                refreshDosageInfo();
+            });
+
+            socket.on('dose_error', function(data) {
+                console.error(`Dosing error: ${data.type}, ${data.error}`);
+                stopCountdown();
+                alert(`Dosing error for pH ${data.type.toUpperCase()}: ${data.error}`);
+                refreshDosageInfo();
+            });
+
+            socket.on('dose_stopped', function(data) {
+                console.log(`Dose stopped: ${data.type}, ${data.amount} ml`);
+                stopCountdown();
+                refreshDosageInfo();
+            });
+
+            await refreshDosageInfo();
+
+            // Countdown timer variables
+            let timerInterval = null;
+            let remainingSeconds = 0;
+
+            // Function to start the countdown
+            function startCountdown(type, amount, duration) {
+                console.log(`Starting countdown: type=${type}, amount=${amount}, duration=${duration}`);
+                if (timerInterval) {
+                    console.log("Clearing existing timer interval");
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+
+                document.getElementById('dosing-type').textContent = type.toUpperCase();
+                document.getElementById('dosing-amount').textContent = amount.toFixed(2);
+                remainingSeconds = Math.max(0, Math.round(duration)); // Ensure non-negative
+                document.getElementById('remaining-time').textContent = remainingSeconds;
+                document.getElementById('dosing-status').style.display = 'block';
+                document.getElementById('stop-dosing').disabled = false;
+                document.getElementById('stop-dosing').style.opacity = 1;
+
+                timerInterval = setInterval(() => {
+                    console.log(`Countdown tick: ${remainingSeconds} seconds remaining`);
+                    remainingSeconds--;
+                    document.getElementById('remaining-time').textContent = remainingSeconds;
+                    if (remainingSeconds <= 0) {
+                        console.log("Countdown reached zero, stopping");
+                        stopCountdown();
+                    }
+                }, 1000);
+            }
+
+            // Function to stop the countdown
+            function stopCountdown() {
+                console.log("Stopping countdown");
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+                remainingSeconds = 0;
+                document.getElementById('dosing-status').style.display = 'none';
+                document.getElementById('stop-dosing').disabled = true;
+                document.getElementById('stop-dosing').style.opacity = 0.5;
+            }
+
+            // Reusable dispense function
+            async function dispensePh(type, amount) {
+                if (amount <= 0) {
+                    alert(`Invalid or zero amount specified for pH ${type.toUpperCase()}.`);
+                    return;
+                }
+                try {
+                    console.log(`Sending dispense request: type=${type}, amount=${amount}`);
+                    const response = await fetch('/api/dosage/manual', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ type: type, amount: amount })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        console.log(`Dispense request successful: ${data.message}`);
+                        startCountdown(type, amount, data.duration);
+                        refreshDosageInfo();
+                    } else {
+                        console.error(`Dispense failed: ${data.message}`);
+                        alert(`Failed to dispense pH ${type}: ${data.message || 'Unknown error'}`);
+                    }
+                } catch (error) {
+                    console.error(`Error dispensing pH ${type}:`, error);
+                    alert(`Failed to dispense pH ${type}: Network error or server unavailable.`);
+                }
+            }
+
+            // Stop dosing function
+            async function stopDosing() {
+                try {
+                    console.log("Sending stop dosing request");
+                    const response = await fetch('/api/dosage/stop', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        console.log('Dosing stopped successfully:', data.message);
+                    } else {
+                        console.error(`Stop dosing failed: ${data.message}`);
+                        alert(`Failed to stop dosing: ${data.message || 'Unknown server error'}`);
+                    }
+                } catch (error) {
+                    console.error('Error stopping dosing:', error);
+                    alert('Failed to stop dosing: Network error or server unavailable.');
+                }
+            }
+
+            // Stop button event listener
+            document.getElementById('stop-dosing').addEventListener('click', stopDosing);
+
+            // Manual
+            document.getElementById('ph-up-dispense').addEventListener('click', () => {
+                const amt = parseFloat(document.getElementById('ph-up-manual-amount').value) || 0;
+                dispensePh('up', amt);
+            });
+            document.getElementById('ph-down-dispense').addEventListener('click', () => {
+                const amt = parseFloat(document.getElementById('ph-down-manual-amount').value) || 0;
+                dispensePh('down', amt);
+            });
+
+            // Calculated
+            document.getElementById('ph-up-calc-dispense').addEventListener('click', () => {
+                const calcStr = document.getElementById('ph-up-amount').textContent.trim();
+                const calcVal = parseFloat(calcStr) || 0;
+                dispensePh('up', calcVal);
+            });
+            document.getElementById('ph-down-calc-dispense').addEventListener('click', () => {
+                const calcStr = document.getElementById('ph-down-amount').textContent.trim();
+                const calcVal = parseFloat(calcStr) || 0;
+                dispensePh('down', calcVal);
+            });
         });
-
-        const txt = await r.text();           // <-- always read the body
-        let  msg = txt;
-        try { msg = JSON.parse(txt).error || txt; } catch (_) {}
-
-        if (!r.ok)   throw new Error(msg || r.statusText);
-        console.log("[screenlogic] success:", payload);
-      } catch (err) {
-        alert("CMD failed: " + err.message);
-        console.error("[screenlogic] error:", err);
-      }
-    }
-
-
-    /* ---- socket setup ---- */
-    document.addEventListener("DOMContentLoaded", () => {
-      const s = io("/status", { transports:["websocket"] });
-
-      s.on("status_update", data => {
-        // flat dict of all keys
-        const d = data.screenlogic || {};
-
-        // pH
-        $("#ph-display").text(
-          data.current_ph !== undefined ? Number(data.current_ph).toFixed(2) : "N/A"
-        );
-        $("#last-updated").text("Last updated: "+new Date().toLocaleString());
-
-        // environment
-        $("#air-temp").text(d["controller.sensor.air_temperature.value"] ?? "–");
-        $("#salt-ppm").text(d["controller.sensor.salt_ppm.value"] ?? "–");
-
-        // pool circuit state
-        const poolOn = d[`circuit.${POOL_CIRCUIT_ID}.value`] === 1;
-        if (poolOn) {
-          $("#pool-on").addClass("btn-on-active").removeClass("btn-inactive");
-          $("#pool-off").addClass("btn-inactive").removeClass("btn-off-active");
-        } else {
-          $("#pool-on").addClass("btn-inactive").removeClass("btn-on-active");
-          $("#pool-off").addClass("btn-off-active").removeClass("btn-inactive");
-        }
-
-        // pool temps / heat
-        $("#pool-temp").text(d["body.0.last_temperature.value"] ?? "–");
-        $("#pool-heat-mode").val(d["body.0.heat_state.value"] ?? 0);
-        $("#pool-setpoint").val(d["body.0.heat_setpoint.value"] ?? "");
-
-        // spa
-        const spaOn = d[`circuit.${SPA_CIRCUIT_ID}.value`] === 1;
-        if (spaOn) {
-          $("#spa-on").addClass("btn-on-active").removeClass("btn-inactive");
-          $("#spa-off").addClass("btn-inactive").removeClass("btn-off-active");
-        } else {
-          $("#spa-on").addClass("btn-inactive").removeClass("btn-on-active");
-          $("#spa-off").addClass("btn-off-active").removeClass("btn-inactive");
-        }
-        $("#spa-temp").text(d["body.1.last_temperature.value"] ?? "–");
-        $("#spa-heat-mode").val(d["body.1.heat_state.value"] ?? 0);
-        $("#spa-setpoint").val(d["body.1.heat_setpoint.value"] ?? "");
-      });
-
-      /* ---- button handlers ---- */
-      $("#pool-on").on("click", ()=> sendCommand({
-        target:"circuit", id:POOL_CIRCUIT_ID, action:"on"
-      }));
-      $("#pool-off").on("click", ()=> sendCommand({
-        target:"circuit", id:POOL_CIRCUIT_ID, action:"off"
-      }));
-      $("#spa-on").on("click", ()=> sendCommand({
-        target:"circuit", id:SPA_CIRCUIT_ID, action:"on"
-      }));
-      $("#spa-off").on("click", ()=> sendCommand({
-        target:"circuit", id:SPA_CIRCUIT_ID, action:"off"
-      }));
-      $("#pool-heat-save").on("click", () => {
-        const sp = Number($("#pool-setpoint").val());
-        if (!sp) { alert("Enter a pool set-point first"); return; }
-
-        sendCommand({
-          target: "heat", body: 0,
-          mode: Number($("#pool-heat-mode").val()),
-          setpoint: sp
-        });
-      });
-
-      $("#spa-heat-save").on("click", ()=>{
-        const sp = Number($("#spa-setpoint").val());
-        if (!sp) { alert("Enter a spa set-point first"); return; }
-        sendCommand({
-          target:"heat", body:1,
-          mode:Number($("#spa-heat-mode").val()),
-          setpoint:sp
-        });
-      });
-    });
-  </script>
+    </script>
 </body>
 </html>

@@ -1,11 +1,10 @@
-# File: services/dosage_service.py
-
+import time
 import eventlet
 from services.ph_service import get_latest_ph_reading
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from api.settings import load_settings
 from services.log_service import log_dosing_event
-from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
 
 def get_dosage_info():
     current_ph = get_latest_ph_reading()
@@ -54,7 +53,7 @@ def get_dosage_info():
         else:
             ph_down_amount = calculated_down
 
-    return {
+    dosage_data = {
         "current_ph": round(current_ph, 2),
         "system_volume": system_volume,
         "auto_dosing_enabled": auto_dosing_enabled,
@@ -62,8 +61,24 @@ def get_dosage_info():
         "ph_up_amount": round(ph_up_amount, 2),
         "ph_down_amount": round(ph_down_amount, 2),
         "feedback_up": feedback_up,
-        "feedback_down": feedback_down
+        "feedback_down": feedback_down,
+        "active_dosing": False,
+        "active_type": None,
+        "active_amount": None,
+        "active_remaining": None
     }
+
+    # Check for active dosing and calculate remaining time
+    if active_dosing_task and active_start_time and active_duration:
+        elapsed = time.time() - active_start_time
+        remaining = max(0, active_duration - elapsed)
+        if remaining > 0:
+            dosage_data["active_dosing"] = True
+            dosage_data["active_type"] = active_dosing_type
+            dosage_data["active_amount"] = active_dosing_amount
+            dosage_data["active_remaining"] = remaining
+
+    return dosage_data
 
 def manual_dispense(dispense_type, amount_ml):
     current_ph = get_latest_ph_reading() or 'N/A'
@@ -141,7 +156,7 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
 
     def dispense_task():
         from app import socketio  # Import here to avoid circular import
-        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
         try:
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
             print(f"[AutoDosing] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
@@ -162,10 +177,12 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
                 active_relay_port = None
                 active_dosing_type = None
                 active_dosing_amount = None
+                active_start_time = None
+                active_duration = None
             turn_off_relay(relay_port)  # Ensure relay is off
 
     # Cancel any existing task
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount
+    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
     if active_dosing_task:
         try:
             active_dosing_task.kill()
@@ -179,9 +196,13 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
             active_relay_port = None
             active_dosing_type = None
             active_dosing_amount = None
+            active_start_time = None
+            active_duration = None
 
     # Start new task
     active_dosing_task = eventlet.spawn(dispense_task)
     active_relay_port = relay_port
     active_dosing_type = dispense_type
     active_dosing_amount = amount_ml
+    active_start_time = time.time()
+    active_duration = duration_sec
