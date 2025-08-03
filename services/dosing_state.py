@@ -1,8 +1,16 @@
 # dosing_state.py
-# Global state variables for tracking active dosing
-active_dosing_task = None
-active_relay_port = None
-active_dosing_type = None
-active_dosing_amount = None
-active_start_time = None
-active_duration = None
+class DosingState:
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.active_dosing_task = None
+            cls._instance.active_relay_port = None
+            cls._instance.active_dosing_type = None
+            cls._instance.active_dosing_amount = None
+            cls._instance.active_start_time = None
+            cls._instance.active_duration = None
+        return cls._instance
+
+state = DosingState()  # Export the instance

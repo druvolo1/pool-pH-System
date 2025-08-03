@@ -6,7 +6,7 @@ from api.settings import load_settings
 from services.auto_dose_state import auto_dose_state
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from services.dosage_service import manual_dispense, get_dosage_info
-from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
+from services.dosing_state import state  # CHANGED: Import the singleton instance instead of individual globals
 
 dosing_blueprint = Blueprint('dosing', __name__)
 
@@ -27,7 +27,7 @@ def get_current_dosage_info():
     dosage_data["last_dose_type"] = auto_dose_state["last_dose_type"] or "N/A"
     dosage_data["last_dose_amount"] = auto_dose_state["last_dose_amount"]
 
-    print("[DEBUG Route /info] Returning merged dosage_data:", dosage_data)  # Added debug: Log full data in route
+    print("[DEBUG Route /info] Returning merged dosage_data:", dosage_data)
 
     return jsonify(dosage_data)
 
@@ -69,9 +69,9 @@ def manual_dosage():
 
     def dispense_task():
         from app import socketio  # Import here to avoid circular import
-        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
+        # CHANGED: No 'global' keyword needed anymore; attributes are on the object
         try:
-            print(f"[DEBUG ManualDispense] Setting active state: type={dispense_type}, amount={amount_ml}, duration={duration_sec}")  # Added debug: Log setting state
+            print(f"[DEBUG ManualDispense] Setting active state: type={dispense_type}, amount={amount_ml}, duration={duration_sec}")
             # Emit start event
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
             print(f"[Manual Dispense] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
@@ -86,43 +86,44 @@ def manual_dosage():
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
         finally:
             # Clear active task only if this is the current task
-            if active_dosing_task and active_dosing_task == eventlet.getcurrent():
-                print(f"[DEBUG ManualDispense] Clearing state for {dispense_type}")  # Added debug: Log clearing state
-                active_dosing_task = None
-                active_relay_port = None
-                active_dosing_type = None
-                active_dosing_amount = None
-                active_start_time = None
-                active_duration = None
+            # CHANGED: Use state. prefix
+            if state.active_dosing_task and state.active_dosing_task == eventlet.getcurrent():
+                print(f"[DEBUG ManualDispense] Clearing state for {dispense_type}")
+                state.active_dosing_task = None
+                state.active_relay_port = None
+                state.active_dosing_type = None
+                state.active_dosing_amount = None
+                state.active_start_time = None
+                state.active_duration = None
             turn_off_relay(relay_port)  # Ensure relay is off
 
     # Cancel any existing task
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
-    if active_dosing_task:
+    # CHANGED: Use state. prefix for all variables; no 'global' keyword
+    if state.active_dosing_task:
         try:
-            active_dosing_task.kill()
-            if active_relay_port is not None:
-                turn_off_relay(active_relay_port)
-            print(f"[Manual Dispense] Cancelled previous dosing task: {active_dosing_type or 'unknown'}")
+            state.active_dosing_task.kill()
+            if state.active_relay_port is not None:
+                turn_off_relay(state.active_relay_port)
+            print(f"[Manual Dispense] Cancelled previous dosing task: {state.active_dosing_type or 'unknown'}")
         except Exception as e:
             print(f"[Manual Dispense] Error cancelling previous task: {str(e)}")
         finally:
-            print("[DEBUG ManualDispense] Cleared previous state after cancel")  # Added debug: Log clear after cancel
-            active_dosing_task = None
-            active_relay_port = None
-            active_dosing_type = None
-            active_dosing_amount = None
-            active_start_time = None
-            active_duration = None
+            print("[DEBUG ManualDispense] Cleared previous state after cancel")
+            state.active_dosing_task = None
+            state.active_relay_port = None
+            state.active_dosing_type = None
+            state.active_dosing_amount = None
+            state.active_start_time = None
+            state.active_duration = None
 
     # Start new task
-    active_dosing_task = eventlet.spawn(dispense_task)
-    active_relay_port = relay_port
-    active_dosing_type = dispense_type
-    active_dosing_amount = amount_ml
-    active_start_time = time.time()
-    active_duration = duration_sec
-    print(f"[DEBUG ManualDispense] Started new task, state set: start_time={active_start_time}, duration={active_duration}")  # Added debug: Log after starting task
+    state.active_dosing_task = eventlet.spawn(dispense_task)
+    state.active_relay_port = relay_port
+    state.active_dosing_type = dispense_type
+    state.active_dosing_amount = amount_ml
+    state.active_start_time = time.time()
+    state.active_duration = duration_sec
+    print(f"[DEBUG ManualDispense] Started new task, state set: start_time={state.active_start_time}, duration={state.active_duration}")
 
     return jsonify({
         "status": "success",
@@ -137,20 +138,20 @@ def stop_dosage():
     POST /api/dosage/stop
     {}
     """
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
     from app import socketio  # Import here to avoid circular import
+    # CHANGED: Use state. prefix for all variables; no 'global' keyword
 
-    if not active_dosing_task:
+    if not state.active_dosing_task:
         print("[Stop Dosing] No active dosing task to stop")
         return jsonify({"status": "success", "message": "No active dosing to stop."}), 200
 
     try:
-        type_str = active_dosing_type or 'unknown'
-        amount_str = f"{active_dosing_amount:.2f}" if active_dosing_amount is not None else 'unknown'
+        type_str = state.active_dosing_type or 'unknown'
+        amount_str = f"{state.active_dosing_amount:.2f}" if state.active_dosing_amount is not None else 'unknown'
         print(f"[Stop Dosing] Attempting to stop dosing: {type_str}, {amount_str} ml")
         
         # Kill the active dosing task
-        active_dosing_task.kill()
+        state.active_dosing_task.kill()
         
         # Fallback: turn off both possible relays to ensure no relay stays on
         settings = load_settings()
@@ -165,7 +166,7 @@ def stop_dosage():
         # Emit stopped event
         socketio.emit('dose_stopped', {
             'type': type_str,
-            'amount': active_dosing_amount or 0
+            'amount': state.active_dosing_amount or 0
         })
 
         print(f"[Stop Dosing] Stopped dosing: {type_str}, {amount_str} ml")
@@ -185,10 +186,10 @@ def stop_dosage():
         return jsonify({"status": "failure", "message": f"Failed to stop dosing: {error_msg}"}), 500
     finally:
         # Clear state to prevent stuck relays
-        print("[DEBUG StopDosing] Clearing state in finally block")  # Added debug: Log final clear
-        active_dosing_task = None
-        active_relay_port = None
-        active_dosing_type = None
-        active_dosing_amount = None
-        active_start_time = None
-        active_duration = None
+        print("[DEBUG StopDosing] Clearing state in finally block")
+        state.active_dosing_task = None
+        state.active_relay_port = None
+        state.active_dosing_type = None
+        state.active_dosing_amount = None
+        state.active_start_time = None
+        state.active_duration = None

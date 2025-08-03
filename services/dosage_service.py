@@ -4,7 +4,7 @@ from services.ph_service import get_latest_ph_reading
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from api.settings import load_settings
 from services.log_service import log_dosing_event
-from services.dosing_state import active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
+from services.dosing_state import state  # CHANGED: Import the singleton instance instead of individual globals
 
 def get_dosage_info():
     current_ph = get_latest_ph_reading()
@@ -69,19 +69,20 @@ def get_dosage_info():
     }
 
     # Check for active dosing and calculate remaining time
-    if active_dosing_task and active_start_time and active_duration:
-        elapsed = time.time() - active_start_time
-        remaining = max(0, active_duration - elapsed)
-        print(f"[DEBUG] Active dosing check: task={active_dosing_task is not None}, start_time={active_start_time}, duration={active_duration}, elapsed={elapsed:.2f}, remaining={remaining:.2f}")  # Added debug: Log state details
+    # CHANGED: Use state. prefix for all variables
+    if state.active_dosing_task and state.active_start_time and state.active_duration:
+        elapsed = time.time() - state.active_start_time
+        remaining = max(0, state.active_duration - elapsed)
+        print(f"[DEBUG] Active dosing check: task={state.active_dosing_task is not None}, start_time={state.active_start_time}, duration={state.active_duration}, elapsed={elapsed:.2f}, remaining={remaining:.2f}")
         if remaining > 0:
             dosage_data["active_dosing"] = True
-            dosage_data["active_type"] = active_dosing_type
-            dosage_data["active_amount"] = active_dosing_amount
+            dosage_data["active_type"] = state.active_dosing_type
+            dosage_data["active_amount"] = state.active_dosing_amount
             dosage_data["active_remaining"] = remaining
         else:
-            print("[DEBUG] Remaining <= 0, not setting active_dosing to True")  # Added debug: Log why not active
+            print("[DEBUG] Remaining <= 0, not setting active_dosing to True")
 
-    print(f"[DEBUG] Returning dosage_data: active_dosing={dosage_data['active_dosing']}, active_remaining={dosage_data.get('active_remaining', 'N/A')}")  # Added debug: Log final active state before return
+    print(f"[DEBUG] Returning dosage_data: active_dosing={dosage_data['active_dosing']}, active_remaining={dosage_data.get('active_remaining', 'N/A')}")
 
     return dosage_data
 
@@ -161,9 +162,9 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
 
     def dispense_task():
         from app import socketio  # Import here to avoid circular import
-        global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
+        # CHANGED: No 'global' keyword needed anymore; attributes are on the object
         try:
-            print(f"[DEBUG AutoDispense] Setting active state: type={dispense_type}, amount={amount_ml}, duration={duration_sec}")  # Added debug: Log setting state
+            print(f"[DEBUG AutoDispense] Setting active state: type={dispense_type}, amount={amount_ml}, duration={duration_sec}")
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
             print(f"[AutoDosing] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
             turn_on_relay(relay_port)
@@ -177,40 +178,41 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
             socketio.emit('dose_error', {'type': dispense_type, 'error': str(e)})
         finally:
             # Clear active task only if this is the current task
-            if active_dosing_task and active_dosing_task == eventlet.getcurrent():
-                print(f"[DEBUG AutoDispense] Clearing state for {dispense_type}")  # Added debug: Log clearing state
-                active_dosing_task = None
-                active_relay_port = None
-                active_dosing_type = None
-                active_dosing_amount = None
-                active_start_time = None
-                active_duration = None
+            # CHANGED: Use state. prefix
+            if state.active_dosing_task and state.active_dosing_task == eventlet.getcurrent():
+                print(f"[DEBUG AutoDispense] Clearing state for {dispense_type}")
+                state.active_dosing_task = None
+                state.active_relay_port = None
+                state.active_dosing_type = None
+                state.active_dosing_amount = None
+                state.active_start_time = None
+                state.active_duration = None
             turn_off_relay(relay_port)  # Ensure relay is off
 
     # Cancel any existing task
-    global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
-    if active_dosing_task:
+    # CHANGED: Use state. prefix for all variables; no 'global' keyword
+    if state.active_dosing_task:
         try:
-            active_dosing_task.kill()
-            if active_relay_port is not None:
-                turn_off_relay(active_relay_port)
-            print(f"[AutoDosing] Cancelled previous dosing task: {active_dosing_type or 'unknown'}")
+            state.active_dosing_task.kill()
+            if state.active_relay_port is not None:
+                turn_off_relay(state.active_relay_port)
+            print(f"[AutoDosing] Cancelled previous dosing task: {state.active_dosing_type or 'unknown'}")
         except Exception as e:
             print(f"[AutoDosing] Error cancelling previous task: {str(e)}")
         finally:
-            print("[DEBUG AutoDispense] Cleared previous state after cancel")  # Added debug: Log clear after cancel
-            active_dosing_task = None
-            active_relay_port = None
-            active_dosing_type = None
-            active_dosing_amount = None
-            active_start_time = None
-            active_duration = None
+            print("[DEBUG AutoDispense] Cleared previous state after cancel")
+            state.active_dosing_task = None
+            state.active_relay_port = None
+            state.active_dosing_type = None
+            state.active_dosing_amount = None
+            state.active_start_time = None
+            state.active_duration = None
 
     # Start new task
-    active_dosing_task = eventlet.spawn(dispense_task)
-    active_relay_port = relay_port
-    active_dosing_type = dispense_type
-    active_dosing_amount = amount_ml
-    active_start_time = time.time()
-    active_duration = duration_sec
-    print(f"[DEBUG AutoDispense] Started new task, state set: start_time={active_start_time}, duration={active_duration}")  # Added debug: Log after starting task
+    state.active_dosing_task = eventlet.spawn(dispense_task)
+    state.active_relay_port = relay_port
+    state.active_dosing_type = dispense_type
+    state.active_dosing_amount = amount_ml
+    state.active_start_time = time.time()
+    state.active_duration = duration_sec
+    print(f"[DEBUG AutoDispense] Started new task, state set: start_time={state.active_start_time}, duration={state.active_duration}")
