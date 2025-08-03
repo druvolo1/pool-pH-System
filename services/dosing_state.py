@@ -1,3 +1,4 @@
+# dosing_state.py
 # Global state variables for tracking active dosing
 active_dosing_task = None
 active_relay_port = None
