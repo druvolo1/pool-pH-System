@@ -16,7 +16,7 @@ from flask_socketio import SocketIO
 # Blueprints
 from api.ph import ph_blueprint
 from api.pump_relay import relay_blueprint
-from api.settings import settings_blueprint
+from api.settings import settings_blueprint, load_settings  # Added load_settings
 from api.logs import log_blueprint
 from api.dosing import dosing_blueprint
 from api.update_code import update_code_blueprint
@@ -35,6 +35,7 @@ from services.ph_service import get_latest_ph_reading, serial_reader
 from services.dosage_service import get_dosage_info
 from services.error_service import check_for_hardware_errors
 from services.pump_trigger_dose_service import pump_trigger_dose_loop
+from utils.settings_utils import load_settings  # Added for mDNS
 
 # 1) Create the global SocketIO instance
 socketio = SocketIO(
@@ -217,14 +218,14 @@ try:
     start_threads()
     print("[WSGI] Background threads started successfully.")
 
-    # Load current system_name (if needed for mDNS; uncomment as required)
-    # s = load_settings()
-    # system_name = s.get("system_name", "Garden")
+    s = load_settings()
+    system_name = s.get("system_name", "Pool")
 
     # 1) Register the system_name-pc mDNS (hostname-based)
     # register_mdns_pc_hostname(system_name, service_port=8000)
 
     # 2) Also register the pure system name
+    from mdsn import register_mdns_pure_system_name
     register_mdns_pure_system_name(system_name, service_port=8000)
 
     print(f"[WSGI] Completed mDNS registration for '{system_name}'.")
