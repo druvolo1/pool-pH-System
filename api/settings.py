@@ -6,6 +6,8 @@ from status_namespace import emit_status_update
 from services.auto_dose_utils import reset_auto_dose_timer
 from utils.settings_utils import load_settings, save_settings
 
+import requests  # Added: For sending the Discord/Telegram test POST
+
 settings_blueprint = Blueprint("settings", __name__)
 SETTINGS_FILE = os.path.join(os.getcwd(), "data", "settings.json")
 PROGRAM_VERSION = "1.0.5"
@@ -160,3 +162,83 @@ def assign_usb():
 @settings_blueprint.route("/export", methods=["GET"])
 def export_settings():
     return send_file(SETTINGS_FILE, mimetype="application/json", as_attachment=True, download_name="settings.json")
+
+# Added from older: Import settings
+@settings_blueprint.route("/import", methods=["POST"])
+def import_settings():
+    if 'file' not in request.files:
+        return jsonify({"status": "failure", "error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"status": "failure", "error": "No selected file"}), 400
+    if file and file.filename.endswith('.json'):
+        try:
+            new_settings = json.load(file)
+            save_settings(new_settings)
+            return jsonify({"status": "success", "message": "Settings imported successfully"})
+        except Exception as e:
+            return jsonify({"status": "failure", "error": str(e)}), 500
+    return jsonify({"status": "failure", "error": "Invalid file"}), 400
+
+# Added from older: Test Discord notification
+@settings_blueprint.route("/discord_message", methods=["POST"])
+def test_discord():
+    data = request.get_json() or {}
+    test_message = data.get("test_message", "Test notification from Pool-pH Controller")
+    settings = load_settings()
+    if not settings.get("discord_enabled") or not settings.get("discord_webhook_url"):
+        return jsonify({"status": "failure", "error": "Discord not enabled or webhook URL missing"}), 400
+    try:
+        response = requests.post(
+            settings["discord_webhook_url"],
+            json={"content": test_message},
+            headers={"Content-Type": "application/json"}
+        )
+        if response.ok:
+            return jsonify({"status": "success", "info": "Message sent to Discord"})
+        else:
+            return jsonify({"status": "failure", "error": f"Discord API error: {response.text}"}), response.status_code
+    except Exception as e:
+        return jsonify({"status": "failure", "error": str(e)}), 500
+
+# Added from older: Test Telegram notification
+@settings_blueprint.route("/telegram_message", methods=["POST"])
+def test_telegram():
+    data = request.get_json() or {}
+    test_message = data.get("test_message", "Test notification from Pool-pH Controller")
+    settings = load_settings()
+    if not settings.get("telegram_enabled") or not settings.get("telegram_bot_token") or not settings.get("telegram_chat_id"):
+        return jsonify({"status": "failure", "error": "Telegram not enabled or bot token/chat ID missing"}), 400
+    try:
+        url = f"https://api.telegram.org/bot{settings['telegram_bot_token']}/sendMessage"
+        params = {"chat_id": settings["telegram_chat_id"], "text": test_message}
+        response = requests.post(url, params=params)
+        if response.ok:
+            return jsonify({"status": "success", "info": "Message sent to Telegram"})
+        else:
+            return jsonify({"status": "failure", "error": f"Telegram API error: {response.text}"}), response.status_code
+    except Exception as e:
+        return jsonify({"status": "failure", "error": str(e)}), 500
+
+# Added from older: Code update without restart
+@settings_blueprint.route("/system/pull_no_restart", methods=["POST"])
+def pull_no_restart():
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    try:
+        os.chdir(app_dir)
+        pull_output = subprocess.check_output(['git', 'pull', 'origin', 'main'], stderr=subprocess.STDOUT).decode('utf-8')
+        pip_output = subprocess.check_output(['pip', 'install', '-r', 'requirements.txt'], stderr=subprocess.STDOUT).decode('utf-8')
+        return jsonify({"status": "success", "output": f"Git pull: {pull_output}\nPip install: {pip_output}"})
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "failure", "error": e.output.decode('utf-8'), "output": ""}), 500
+    except Exception as e:
+        return jsonify({"status": "failure", "error": str(e), "output": ""}), 500
+
+# Added from older: Restart service
+@settings_blueprint.route("/system/restart", methods=["POST"])
+def restart_system():
+    try:
+        subprocess.call(['sudo', 'systemctl', 'restart', 'pool-ph-controller.service'])
+        return jsonify({"status": "success", "message": "Restart initiated"})
+    except Exception as e:
+        return jsonify({"status": "failure", "error": str(e)}), 500
