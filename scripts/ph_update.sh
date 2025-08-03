@@ -12,7 +12,7 @@ LOGFILE="${SCRIPTDIR}/ph_update.log"
 # Redirect all script output (stdout & stderr) to both the console and the log file.
 exec > >(tee -a "$LOGFILE") 2>&1
 
-cd /home/dave/ph
+cd /home/dave/pool-pH-System
 source venv/bin/activate
 
 echo "[$(date)] Pulling latest code..."
