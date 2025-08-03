@@ -5,6 +5,8 @@ from services.pump_relay_service import turn_on_relay, turn_off_relay
 from api.settings import load_settings
 from services.log_service import log_dosing_event
 from services.dosing_state import state  # CHANGED: Import the singleton instance instead of individual globals
+from datetime import datetime  # ADDED: For time checks
+import pytz  # ADDED: For timezone handling
 
 def get_dosage_info():
     current_ph = get_latest_ph_reading()
@@ -101,6 +103,19 @@ def perform_auto_dose(settings):
     and dispenses pH Up if the value is below the minimum or pH Down if above the maximum.
     Returns a tuple (direction, dose_ml) if a dose is performed, otherwise ("none", 0.0).
     """
+    # ADDED: Check if current time is after the no-dose cutoff time
+    no_dose_after = settings.get("no_dose_after")
+    if no_dose_after:
+        try:
+            tz = pytz.timezone(settings.get("time_zone", "UTC"))
+            now = datetime.now(tz)
+            current_time = now.strftime("%H:%M")
+            if current_time > no_dose_after:
+                print(f"[AutoDosing] Current time {current_time} is after cutoff {no_dose_after}; skipping auto-dose.")
+                return ("none", 0.0)
+        except Exception as e:
+            print(f"[AutoDosing] Error checking no-dose-after time: {str(e)}. Proceeding without time check.")
+
     ph_value = get_latest_ph_reading()
     if ph_value is None:
         print("[AutoDosing] No pH reading available; skipping auto-dose.")

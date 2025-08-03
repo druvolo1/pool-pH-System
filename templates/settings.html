@@ -153,6 +153,8 @@
           </select>
           <label for="delay-min">Delay after ON (min):</label>
           <input type="number" id="delay-min" step="1">
+          <label for="no-dose-after">No dosing after (local time):</label>
+          <input type="time" id="no-dose-after" step="60">
           <label for="system-volume">Pool volume (gal):</label>
           <input type="number" id="system-volume" step="0.1">
           <button type="submit" id="screenlogic-save">Save</button>
@@ -345,6 +347,7 @@
     $("sl-host").value = s.screenlogic?.host ?? "";
     $("pump-select").value = s.pump_circuit ?? "0";
     $("delay-min").value = s.delay_after_on ?? 0;
+    $("no-dose-after").value = s.no_dose_after ?? "";
     $("system-volume").value = s.system_volume ?? "";
 
     // program version
@@ -425,6 +428,7 @@
       },
       pump_circuit: $("pump-select").value,
       delay_after_on: intOrNull($("delay-min").value),
+      no_dose_after: $("no-dose-after").value.trim() || null,
       system_volume: floatOrNull($("system-volume").value),
     });
   });
