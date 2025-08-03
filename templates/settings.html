@@ -350,6 +350,15 @@
       // program version
       const pv = $("program-version");
       if (pv) pv.textContent = s.program_version ?? "N/A";
+
+      // Discord
+      $("discord-enabled").checked = !!s.discord_enabled;
+      $("discord-webhook-url").value = s.discord_webhook_url ?? "";
+
+      // Telegram
+      $("telegram-enabled").checked = !!s.telegram_enabled;
+      $("telegram-bot-token").value = s.telegram_bot_token ?? "";
+      $("telegram-chat-id").value = s.telegram_chat_id ?? "";
     }
 
     /* ───────── attach form listeners ───────── */
@@ -420,11 +429,56 @@
       });
     });
 
+    $("discord-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        discord_enabled: $("discord-enabled").checked,
+        discord_webhook_url: $("discord-webhook-url").value.trim(),
+      });
+    });
+
+    $("telegram-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      saveAndRefresh({
+        telegram_enabled: $("telegram-enabled").checked,
+        telegram_bot_token: $("telegram-bot-token").value.trim(),
+        telegram_chat_id: $("telegram-chat-id").value.trim(),
+      });
+    });
+
     /* ───────── init ───────── */
     document.addEventListener("DOMContentLoaded", () => {
       loadPage();
       rescanUsb();
       setInterval(rescanUsb, 15000);
+
+      $("discord-test-send-btn").addEventListener("click", async () => {
+        const msg = $("discord-test-message").value.trim() || "Test message from Pool-pH Controller";
+        const resultDiv = $("discord-test-result");
+        resultDiv.textContent = "Sending...";
+        try {
+          const res = await postJSON("/api/settings/discord_message", { test_message: msg });
+          resultDiv.textContent = res.info || "Success!";
+          resultDiv.style.color = "green";
+        } catch (e) {
+          resultDiv.textContent = `Error: ${e.message}`;
+          resultDiv.style.color = "red";
+        }
+      });
+
+      $("telegram-test-send-btn").addEventListener("click", async () => {
+        const msg = $("telegram-test-message").value.trim() || "Test message from Pool-pH Controller";
+        const resultDiv = $("telegram-test-result");
+        resultDiv.textContent = "Sending...";
+        try {
+          const res = await postJSON("/api/settings/telegram_message", { test_message: msg });
+          resultDiv.textContent = res.info || "Success!";
+          resultDiv.style.color = "green";
+        } catch (e) {
+          resultDiv.textContent = `Error: ${e.message}`;
+          resultDiv.style.color = "red";
+        }
+      });
     });
   </script>
 </body>
