@@ -238,7 +238,7 @@ def pull_no_restart():
 @settings_blueprint.route("/system/restart", methods=["POST"])
 def restart_system():
     try:
-        subprocess.call(['sudo', 'systemctl', 'restart', 'pool-ph-controller.service'])
+        subprocess.call(['sudo', 'systemctl', 'restart', 'ph.service'])
         return jsonify({"status": "success", "message": "Restart initiated"})
     except Exception as e:
         return jsonify({"status": "failure", "error": str(e)}), 500
