@@ -72,11 +72,16 @@ def get_dosage_info():
     if active_dosing_task and active_start_time and active_duration:
         elapsed = time.time() - active_start_time
         remaining = max(0, active_duration - elapsed)
+        print(f"[DEBUG] Active dosing check: task={active_dosing_task is not None}, start_time={active_start_time}, duration={active_duration}, elapsed={elapsed:.2f}, remaining={remaining:.2f}")  # Added debug: Log state details
         if remaining > 0:
             dosage_data["active_dosing"] = True
             dosage_data["active_type"] = active_dosing_type
             dosage_data["active_amount"] = active_dosing_amount
             dosage_data["active_remaining"] = remaining
+        else:
+            print("[DEBUG] Remaining <= 0, not setting active_dosing to True")  # Added debug: Log why not active
+
+    print(f"[DEBUG] Returning dosage_data: active_dosing={dosage_data['active_dosing']}, active_remaining={dosage_data.get('active_remaining', 'N/A')}")  # Added debug: Log final active state before return
 
     return dosage_data
 
@@ -158,6 +163,7 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
         from app import socketio  # Import here to avoid circular import
         global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
         try:
+            print(f"[DEBUG AutoDispense] Setting active state: type={dispense_type}, amount={amount_ml}, duration={duration_sec}")  # Added debug: Log setting state
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
             print(f"[AutoDosing] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
             turn_on_relay(relay_port)
@@ -172,7 +178,7 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
         finally:
             # Clear active task only if this is the current task
             if active_dosing_task and active_dosing_task == eventlet.getcurrent():
-                print(f"[AutoDosing] Clearing state for {dispense_type}")
+                print(f"[DEBUG AutoDispense] Clearing state for {dispense_type}")  # Added debug: Log clearing state
                 active_dosing_task = None
                 active_relay_port = None
                 active_dosing_type = None
@@ -192,6 +198,7 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
         except Exception as e:
             print(f"[AutoDosing] Error cancelling previous task: {str(e)}")
         finally:
+            print("[DEBUG AutoDispense] Cleared previous state after cancel")  # Added debug: Log clear after cancel
             active_dosing_task = None
             active_relay_port = None
             active_dosing_type = None
@@ -206,3 +213,4 @@ def do_relay_dispense(dispense_type, amount_ml, settings):
     active_dosing_amount = amount_ml
     active_start_time = time.time()
     active_duration = duration_sec
+    print(f"[DEBUG AutoDispense] Started new task, state set: start_time={active_start_time}, duration={active_duration}")  # Added debug: Log after starting task

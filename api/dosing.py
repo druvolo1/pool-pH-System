@@ -27,6 +27,8 @@ def get_current_dosage_info():
     dosage_data["last_dose_type"] = auto_dose_state["last_dose_type"] or "N/A"
     dosage_data["last_dose_amount"] = auto_dose_state["last_dose_amount"]
 
+    print("[DEBUG Route /info] Returning merged dosage_data:", dosage_data)  # Added debug: Log full data in route
+
     return jsonify(dosage_data)
 
 @dosing_blueprint.route('/manual', methods=['POST'])
@@ -69,6 +71,7 @@ def manual_dosage():
         from app import socketio  # Import here to avoid circular import
         global active_dosing_task, active_relay_port, active_dosing_type, active_dosing_amount, active_start_time, active_duration
         try:
+            print(f"[DEBUG ManualDispense] Setting active state: type={dispense_type}, amount={amount_ml}, duration={duration_sec}")  # Added debug: Log setting state
             # Emit start event
             socketio.emit('dose_start', {'type': dispense_type, 'amount': amount_ml, 'duration': duration_sec})
             print(f"[Manual Dispense] Turning ON Relay {relay_port} for {duration_sec:.2f} seconds...")
@@ -84,7 +87,7 @@ def manual_dosage():
         finally:
             # Clear active task only if this is the current task
             if active_dosing_task and active_dosing_task == eventlet.getcurrent():
-                print(f"[Manual Dispense] Clearing state for {dispense_type}")
+                print(f"[DEBUG ManualDispense] Clearing state for {dispense_type}")  # Added debug: Log clearing state
                 active_dosing_task = None
                 active_relay_port = None
                 active_dosing_type = None
@@ -104,6 +107,7 @@ def manual_dosage():
         except Exception as e:
             print(f"[Manual Dispense] Error cancelling previous task: {str(e)}")
         finally:
+            print("[DEBUG ManualDispense] Cleared previous state after cancel")  # Added debug: Log clear after cancel
             active_dosing_task = None
             active_relay_port = None
             active_dosing_type = None
@@ -118,6 +122,7 @@ def manual_dosage():
     active_dosing_amount = amount_ml
     active_start_time = time.time()
     active_duration = duration_sec
+    print(f"[DEBUG ManualDispense] Started new task, state set: start_time={active_start_time}, duration={active_duration}")  # Added debug: Log after starting task
 
     return jsonify({
         "status": "success",
@@ -180,6 +185,7 @@ def stop_dosage():
         return jsonify({"status": "failure", "message": f"Failed to stop dosing: {error_msg}"}), 500
     finally:
         # Clear state to prevent stuck relays
+        print("[DEBUG StopDosing] Clearing state in finally block")  # Added debug: Log final clear
         active_dosing_task = None
         active_relay_port = None
         active_dosing_type = None
