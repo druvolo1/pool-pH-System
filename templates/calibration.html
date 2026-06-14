@@ -114,10 +114,9 @@
     <ul>
       <li><a href="/">Home</a></li>
       <li><a href="/dosage">Dosage</a></li>
-      <!--<li><a href="/calibration">Calibration</a></li>-->
-      <!--<li><a href="/configuration">Configuration</a></li>-->
+      <li><a href="/calibration">Calibration</a></li>
       <li><a href="/settings">Settings</a></li>
-      <!--<li><a href="/valves">Valves</a></li>-->
+      <li><a href="/logs">Logs</a></li>
     </ul>
   </nav>
 
@@ -285,6 +284,14 @@
         })
         .catch(err => console.error("Error fetching settings:", err));
   
+      // Bypass median/stability/jump filters server-side while this page is open
+      // so calibration reads are instant. Backend auto-expires ~60s after last ping.
+      function pingCalibrationMode() {
+        fetch('/api/ph/calibration_mode', { method: 'POST' }).catch(() => {});
+      }
+      pingCalibrationMode();
+      setInterval(pingCalibrationMode, 30000);
+
       // ============== PH STUFF ==============
       function initPhStuff() {
         function fetchLatestPh() {

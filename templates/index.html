@@ -20,6 +20,7 @@
     <ul>
       <li><a href="/">Home</a></li>
       <li><a href="/dosage">Dosage</a></li>
+      <li><a href="/calibration">Calibration</a></li>
       <li><a href="/settings">Settings</a></li>
       <li><a href="/logs">Logs</a></li>
     </ul>
@@ -29,6 +30,9 @@
   <main>
     <h1>Automated Pool Controller</h1>
     <p class="subtitle">Live status & quick controls.</p>
+
+    <div id="screenlogic-banner" style="display:none; padding:10px 14px; margin:10px 0;
+         border-radius:6px; background:#f4c531; color:#121212; font-weight:600;"></div>
 
     <!-- ───── pH (existing) ───── -->
     <section class="data-container">
@@ -79,14 +83,12 @@
             <label>Mode</label>
             <select id="pool-heat-mode">
               <option value="0">Off</option>
-              <option value="1">Solar</option>
-              <option value="2">Heater</option>
-              <option value="3">Both</option>
+              <option value="3">Heater</option>
             </select>
           </div>
           <div style="flex:1">
             <label>Set-Point °F</label>
-            <input type="number" id="pool-setpoint" step="1" min="50" max="104">
+            <input type="number" id="pool-setpoint" step="1" min="40" max="104">
           </div>
         </div>
         <button id="pool-heat-save" type="button">Save Heating</button>
@@ -116,14 +118,12 @@
             <label>Mode</label>
             <select id="spa-heat-mode">
               <option value="0">Off</option>
-              <option value="1">Solar</option>
-              <option value="2">Heater</option>
-              <option value="3">Both</option>
+              <option value="3">Heater</option>
             </select>
           </div>
           <div style="flex:1">
             <label>Set-Point °F</label>
-            <input type="number" id="spa-setpoint" step="1" min="50" max="104">
+            <input type="number" id="spa-setpoint" step="1" min="40" max="104">
           </div>
         </div>
         <button id="spa-heat-save" type="button">Save Heating</button>
@@ -165,9 +165,35 @@
     document.addEventListener("DOMContentLoaded", () => {
       const s = io("/status", { transports:["websocket"] });
 
+      const CTRL_STATE_LABELS = { 0: "Unknown", 1: "Ready", 2: "Sync", 3: "Service" };
+
+      function applyScreenLogicGate(d) {
+        const noData = !d || Object.keys(d).length === 0;
+        const stateVal = d ? d["controller.sensor.state.value"] : undefined;
+        const inService = stateVal === 3;
+        const disable = noData || inService;
+
+        const $banner = $("#screenlogic-banner");
+        if (inService) {
+          $banner.text("ScreenLogic is in SERVICE mode — pool/spa controls are disabled.").show();
+        } else if (noData) {
+          $banner.text("ScreenLogic is offline — pool/spa controls are disabled.").show();
+        } else {
+          $banner.hide();
+        }
+
+        const ctrlSelectors = "#pool-on,#pool-off,#spa-on,#spa-off," +
+                              "#pool-heat-mode,#pool-setpoint,#pool-heat-save," +
+                              "#spa-heat-mode,#spa-setpoint,#spa-heat-save";
+        $(ctrlSelectors).prop("disabled", disable);
+        $("section.data-container:has(#pool-on,#spa-on)")
+          .css("opacity", disable ? 0.55 : 1);
+      }
+
       s.on("status_update", data => {
         // flat dict of all keys
         const d = data.screenlogic || {};
+        applyScreenLogicGate(d);
 
         // pH
         $("#ph-display").text(
@@ -179,8 +205,12 @@
         $("#air-temp").text(d["controller.sensor.air_temperature.value"] ?? "–");
         $("#salt-ppm").text(d["controller.sensor.salt_ppm.value"] ?? "–");
 
-        // pool circuit state
-        const poolOn = d[`circuit.${POOL_CIRCUIT_ID}.value`] === 1;
+        // Shared-plumbing quirk: Pentair EasyTouch reports BOTH circuits as
+        // value=1 when the spa is on (pump is energized for both circuits even
+        // though the diverter has routed water to the spa). Treat spa as the
+        // winner so the UI matches what the official ScreenLogic app shows.
+        const spaOn  = d[`circuit.${SPA_CIRCUIT_ID}.value`] === 1;
+        const poolOn = !spaOn && d[`circuit.${POOL_CIRCUIT_ID}.value`] === 1;
         if (poolOn) {
           $("#pool-on").addClass("btn-on-active").removeClass("btn-inactive");
           $("#pool-off").addClass("btn-inactive").removeClass("btn-off-active");
@@ -194,8 +224,7 @@
         $("#pool-heat-mode").val(d["body.0.heat_state.value"] ?? 0);
         $("#pool-setpoint").val(d["body.0.heat_setpoint.value"] ?? "");
 
-        // spa
-        const spaOn = d[`circuit.${SPA_CIRCUIT_ID}.value`] === 1;
+        // spa (spaOn already computed above)
         if (spaOn) {
           $("#spa-on").addClass("btn-on-active").removeClass("btn-inactive");
           $("#spa-off").addClass("btn-inactive").removeClass("btn-off-active");

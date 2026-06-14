@@ -1,7 +1,7 @@
 # File: api/ph.py
 
 from flask import Blueprint, jsonify, request
-from services.ph_service import enqueue_calibration, get_latest_ph_reading
+from services.ph_service import enqueue_calibration, get_latest_ph_reading, bump_calibration_mode
 from utils.settings_utils import load_settings, save_settings
 
 ph_blueprint = Blueprint('ph', __name__)
@@ -32,6 +32,16 @@ def ph_calibration(level):
     if response["status"] == "success":
         return jsonify(response)
     return jsonify(response), 400
+
+@ph_blueprint.route('/calibration_mode', methods=['POST'])
+def calibration_mode_heartbeat():
+    """
+    Heartbeat from the calibration page to bypass median/stability/jump filters
+    so the probe's raw readings appear instantly. Auto-expires ~60s after the
+    last heartbeat.
+    """
+    bump_calibration_mode()
+    return jsonify({"status": "success"})
 
 @ph_blueprint.route('/latest', methods=['GET'])
 def latest_ph():

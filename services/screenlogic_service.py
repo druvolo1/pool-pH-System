@@ -18,6 +18,8 @@ eventlet.monkey_patch()  # Ensure patched
 
 from screenlogicpy import ScreenLogicGateway
 from utils.settings_utils import load_settings
+from services.notification_service import set_status, clear_status
+from services.error_service import set_error, clear_error
 
 from eventlet import tpool  # For blocking async in threads
 
@@ -109,6 +111,9 @@ class ScreenLogicService:
                 _latest_data.update(snapshot)
 
                 _log.debug("[ScreenLogic] update (%d fields)", len(snapshot))
+                set_status("screenlogic", "connection", "ok",
+                           f"Connected to {host} ({len(snapshot)} fields)")
+                clear_error("SCREENLOGIC_OFFLINE")
 
                 # broadcast to websocket clients
                 from status_namespace import emit_status_update
@@ -116,6 +121,10 @@ class ScreenLogicService:
 
             except Exception as exc:
                 _log.warning("[ScreenLogic] poll failed: %s", exc)
+                set_status("screenlogic", "connection", "error",
+                           f"Poll failed for {host}: {exc}")
+                set_error("SCREENLOGIC_OFFLINE")
+                _latest_data.clear()
 
             eventlet.sleep(interval)
 

@@ -73,16 +73,11 @@ socketio.on_namespace(StatusNamespace('/status'))
 # 3) Background tasks
 def broadcast_ph_readings():
     log_with_timestamp("Inside function for broadcasting pH readings")
-    last_emitted_value = None
     while True:
         try:
             ph_value = get_latest_ph_reading()
             if ph_value is not None:
-                ph_value = round(ph_value, 2)
-                if ph_value != last_emitted_value:
-                    last_emitted_value = ph_value
-                    socketio.emit('ph_update', {'ph': ph_value})
-                    log_with_timestamp(f"[Broadcast] Emitting pH update: {ph_value}")
+                socketio.emit('ph_update', {'ph': round(ph_value, 3)})
             eventlet.sleep(1)
         except Exception as e:
             log_with_timestamp(f"[Broadcast] Error broadcasting pH value: {e}")
@@ -111,6 +106,11 @@ def start_threads():
     # ▶ NEW pump-trigger auto-dosing loop
     log_with_timestamp("Spawning pump-trigger auto dosing…")
     eventlet.spawn(pump_trigger_dose_loop)
+
+    # Salt-level monitor
+    from services.salt_monitor_service import salt_monitor_loop
+    log_with_timestamp("Spawning salt-level monitor…")
+    eventlet.spawn(salt_monitor_loop)
 
     # Serial reader
     from services.ph_service import serial_reader

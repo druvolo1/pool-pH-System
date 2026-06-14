@@ -16,6 +16,7 @@ PROGRAM_VERSION = "1.0.5"
 _DEFAULTS = {
     "system_name": "Pool-pH",
     "ph_range": {"min": 7.2, "max": 7.8},
+    "salt_range": {"min": 2700, "max": 3400},
     "ph_target": 7.5,
     "max_dosing_amount": 5,
     "dosing_interval": 1.0,

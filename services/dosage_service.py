@@ -1,6 +1,8 @@
 import time
 import eventlet
-from services.ph_service import get_latest_ph_reading
+from services.ph_service import get_latest_ph_reading, get_last_read_time
+
+MAX_PH_AGE_SEC = 60
 from services.pump_relay_service import turn_on_relay, turn_off_relay
 from api.settings import load_settings
 from services.log_service import log_dosing_event
@@ -119,6 +121,15 @@ def perform_auto_dose(settings):
     ph_value = get_latest_ph_reading()
     if ph_value is None:
         print("[AutoDosing] No pH reading available; skipping auto-dose.")
+        return ("none", 0.0)
+
+    last_read = get_last_read_time()
+    if last_read is None:
+        print("[AutoDosing] No pH read-time recorded; skipping auto-dose.")
+        return ("none", 0.0)
+    age_sec = (datetime.now() - last_read).total_seconds()
+    if age_sec > MAX_PH_AGE_SEC:
+        print(f"[AutoDosing] pH reading is stale (age={age_sec:.0f}s > {MAX_PH_AGE_SEC}s); skipping auto-dose.")
         return ("none", 0.0)
 
     # Get the acceptable pH range from settings.

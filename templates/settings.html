@@ -37,7 +37,9 @@
     <ul>
       <li><a href="/">Home</a></li>
       <li><a href="/dosage">Dosage</a></li>
+      <li><a href="/calibration">Calibration</a></li>
       <li><a href="/settings">Settings</a></li>
+      <li><a href="/logs">Logs</a></li>
     </ul>
   </nav>
 
@@ -70,6 +72,19 @@
           <input type="number" id="ph-min" step="0.01">
           <label for="ph-max">Max:</label>
           <input type="number" id="ph-max" step="0.01">
+          <button type="submit">Save</button>
+        </form>
+      </div>
+
+      <!-- Salt range -->
+      <div class="data-container" id="salt-range-container">
+        <h2>Salt Range (ppm)</h2>
+        <p class="subtitle" style="margin:0 0 8px 0;">Alerts at most once every 24 hours when salt is outside this range.</p>
+        <form id="salt-range-form">
+          <label for="salt-min">Min:</label>
+          <input type="number" id="salt-min" step="50">
+          <label for="salt-max">Max:</label>
+          <input type="number" id="salt-max" step="50">
           <button type="submit">Save</button>
         </form>
       </div>
@@ -322,6 +337,10 @@
     $("ph-min").value = s.ph_range?.min ?? "";
     $("ph-max").value = s.ph_range?.max ?? "";
 
+    // Salt-range
+    $("salt-min").value = s.salt_range?.min ?? "";
+    $("salt-max").value = s.salt_range?.max ?? "";
+
     // general dosing
     $("ph-target").value = s.ph_target ?? "";
     $("max-dosing").value = s.max_dosing_amount ?? "";
@@ -371,6 +390,16 @@
       ph_range: {
         min: floatOrNull($("ph-min").value),
         max: floatOrNull($("ph-max").value),
+      },
+    });
+  });
+
+  $("salt-range-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    saveAndRefresh({
+      salt_range: {
+        min: intOrNull($("salt-min").value),
+        max: intOrNull($("salt-max").value),
       },
     });
   });

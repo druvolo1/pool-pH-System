@@ -16,7 +16,9 @@ import eventlet
 
 from utils.settings_utils import load_settings
 from services.dosage_service import perform_auto_dose
-from services.auto_dose_state import auto_dose_state
+from services.auto_dose_state import auto_dose_state, save as save_auto_dose_state
+from services.notification_service import _send_telegram_and_discord
+from services.ph_service import get_latest_ph_reading
 from services.screenlogic_service import get_latest_screenlogic_data
 from status_namespace import is_debug_enabled
 
@@ -30,7 +32,6 @@ def pump_trigger_dose_loop() -> None:
     """Background green-thread started via eventlet.spawn()."""
     last_pump_state: Optional[int] = None        # 0 / 1 / None
     scheduled_time: Optional[datetime] = None    # when to dose
-    last_dosed_date: Optional[datetime.date] = None
 
     _log("Pump-trigger auto-dosing loop started")
 
@@ -49,34 +50,51 @@ def pump_trigger_dose_loop() -> None:
             data       = get_latest_screenlogic_data()
             pump_key   = f"pump.{pump_id}.state.value"
             pump_state = data.get(pump_key)        # 0 / 1 / None
+            # EasyTouch circuit IDs (match home page constants)
+            spa_state  = data.get("circuit.500.value")
+            pool_state = data.get("circuit.505.value")
 
             now = datetime.now()
 
-            # ── new day → clear “already dosed” flag ───────────────────────
-            if last_dosed_date and now.date() != last_dosed_date:
-                _log("New calendar day – dose flag cleared")
-                last_dosed_date = None
+            # Derive last-dosed-date from the persisted auto_dose_state so a
+            # service restart can't undo the one-dose-per-day gate.
+            last_dose_time = auto_dose_state.get("last_dose_time")
+            last_dosed_date = (
+                last_dose_time.date() if isinstance(last_dose_time, datetime) else None
+            )
 
-            # if ScreenLogic hasn’t reported a valid value yet
+            # if ScreenLogic hasn't reported a valid value yet
             if pump_state not in (0, 1):
                 eventlet.sleep(5)
                 continue
 
-            # ── OFF → ON transition: schedule a dose ───────────────────────
-            if last_pump_state == 0 and pump_state == 1:
-                scheduled_time = now + timedelta(minutes=delay_min)
-                _log(f"Pump ON – dose scheduled for {scheduled_time:%H:%M:%S}")
+            # OFF → ON transition OR cold-start with pump already running.
+            # The date check below still prevents double-dosing after restart.
+            # Don't schedule if spa is on - acid would go to the spa, not the pool.
+            if pump_state == 1 and last_pump_state in (0, None):
+                if spa_state == 1:
+                    _log(f"Pump ON but spa is also on - skipping dose schedule")
+                else:
+                    scheduled_time = now + timedelta(minutes=delay_min)
+                    _log(f"Pump ON (prev={last_pump_state}) - dose scheduled for {scheduled_time:%H:%M:%S}")
 
-            # ── pump turned OFF before the delay expired – cancel ──────────
+            # Pump turned OFF before delay expired - cancel
             if pump_state == 0 and scheduled_time:
-                _log("Pump OFF before scheduled dose – cancelling")
+                _log("Pump OFF before scheduled dose - cancelling")
                 scheduled_time = None
 
-            # ── time to dose? ──────────────────────────────────────────────
+            # Spa turned on during the delay - cancel (water now routed to spa)
+            if spa_state == 1 and scheduled_time:
+                _log("Spa ON before scheduled dose - cancelling (acid would go to spa)")
+                scheduled_time = None
+
+            # Time to dose? Require pool ON and spa OFF.
             if (
                 scheduled_time
                 and now >= scheduled_time
                 and pump_state == 1
+                and spa_state == 0
+                and pool_state == 1
                 and last_dosed_date != now.date()
             ):
                 dose_type, dose_ml = perform_auto_dose(settings)
@@ -88,8 +106,17 @@ def pump_trigger_dose_loop() -> None:
                             "last_dose_amount": dose_ml,
                         }
                     )
+                    save_auto_dose_state()
                     _log(f"Dosed {dose_ml:.2f} ml ({dose_type})")
-                    last_dosed_date = now.date()
+                    try:
+                        ph_now = get_latest_ph_reading()
+                        ph_text = f"{ph_now:.2f}" if ph_now is not None else "n/a"
+                        _send_telegram_and_discord(
+                            f"Auto-dose: {dose_ml:.0f} ml pH {dose_type} "
+                            f"(current pH {ph_text}) at {now:%Y-%m-%d %H:%M}"
+                        )
+                    except Exception as nex:
+                        _log(f"dose-notify failed: {nex}")
                 else:
                     _log("No dose required")
 
@@ -99,5 +126,5 @@ def pump_trigger_dose_loop() -> None:
             eventlet.sleep(5)
 
         except Exception as exc:
-            _log(f"ERROR — {exc}")
+            _log(f"ERROR - {exc}")
             eventlet.sleep(5)

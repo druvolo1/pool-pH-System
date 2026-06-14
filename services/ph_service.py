@@ -81,6 +81,20 @@ last_read_time = None
 slope_event = event.Event()
 slope_data = None
 
+# Calibration mode: when active, parse_buffer bypasses median/stability/jump
+# filters so the UI sees raw probe readings while the user is calibrating.
+# Frontend heartbeats /api/ph/calibration_mode every ~30s; auto-expires
+# CALIBRATION_MODE_TTL_SEC after the last heartbeat.
+CALIBRATION_MODE_TTL_SEC = 60
+calibration_mode_until = None
+
+def bump_calibration_mode():
+    global calibration_mode_until
+    calibration_mode_until = datetime.now() + timedelta(seconds=CALIBRATION_MODE_TTL_SEC)
+
+def is_calibration_active():
+    return calibration_mode_until is not None and datetime.now() < calibration_mode_until
+
 def parse_buffer(ser):
     """
     Reads data from `buffer`, splitting on '\r',
@@ -99,12 +113,15 @@ def parse_buffer(ser):
     global buffer, latest_ph_value, last_sent_command
     global old_ph_value, last_read_time, ph_jumps
     global slope_data, slope_event
-    global ph_recent_values
+    global ph_recent_values, ph_median_window
 
     settings = load_settings()  # Load once per parse cycle for configs
     jump_threshold = settings.get("ph_jump_threshold", 1.0)
-    median_window_size = settings.get("ph_median_window", 5)
+    median_window_size = max(1, int(settings.get("ph_median_window", 5)))
     stability_threshold = settings.get("ph_stability_threshold", 0.2)
+
+    if ph_median_window.maxlen != median_window_size:
+        ph_median_window = deque(ph_median_window, maxlen=median_window_size)
 
     if last_sent_command is None and not command_queue.empty():
         next_cmd = command_queue.get()
@@ -201,6 +218,20 @@ def parse_buffer(ser):
             if ph_value < 1.0:
                 raise ValueError(f"Ignoring pH <1.0 (noise?). Got {ph_value}")
 
+            if is_calibration_active():
+                with ph_lock:
+                    latest_ph_value = ph_value
+                    log_with_timestamp(f"[CAL] Raw pH reading (filters bypassed): {ph_value}")
+                last_read_time = datetime.now()
+                ph_recent_values.append(ph_value)
+                if len(ph_recent_values) > PH_ROLLING_WINDOW:
+                    ph_recent_values.pop(0)
+                old_ph_value = ph_value
+                ph_median_window.clear()
+                from status_namespace import emit_status_update
+                emit_status_update()
+                continue
+
             ph_median_window.append(ph_value)
             if len(ph_median_window) < median_window_size:
                 log_with_timestamp(f"[DEBUG] Building median window ({len(ph_median_window)}/{median_window_size}); holding.")
@@ -213,6 +244,7 @@ def parse_buffer(ser):
                 variance = max(recent_3) - min(recent_3)
                 if variance > stability_threshold:
                     log_with_timestamp(f"[DEBUG] Discarded unstable reading (var {variance:.2f} > {stability_threshold}): {recent_3}")
+                    ph_median_window.pop()
                     continue
 
             if old_ph_value is None:
@@ -231,8 +263,19 @@ def parse_buffer(ser):
                 if len(ph_jumps) > 5:
                     report_condition_error("ph_probe", "persistent_unstable_readings", f"{len(ph_jumps)} big jumps (> {jump_threshold}) in last 60s.")
 
-                log_with_timestamp(f"[DEBUG] Ignored jump (delta {delta:.2f} > {jump_threshold})")
-                continue
+                window_full = len(ph_median_window) >= median_window_size
+                window_range = (max(ph_median_window) - min(ph_median_window)) if ph_median_window else 0.0
+                if window_full and window_range <= stability_threshold:
+                    log_with_timestamp(
+                        f"[DEBUG] Accepting jump (delta {delta:.2f}): median window stable at new value "
+                        f"(range {window_range:.3f} <= {stability_threshold}). Probe has moved."
+                    )
+                    ph_jumps = []
+                else:
+                    log_with_timestamp(
+                        f"[DEBUG] Ignored jump (delta {delta:.2f} > {jump_threshold}); window range {window_range:.3f}"
+                    )
+                    continue
 
             old_ph_value = filtered_ph
 
@@ -495,6 +538,10 @@ def stop_serial_reader():
 
     stop_event.send()
     log_with_timestamp("[DEBUG] serial_reader stopped via event.")
+
+def get_last_read_time():
+    """Wall-clock time the last accepted pH reading was stored, or None."""
+    return last_read_time
 
 def get_latest_ph_reading():
     global latest_ph_value
