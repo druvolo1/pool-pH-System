@@ -31,8 +31,9 @@
     <h1>Automated Pool Controller</h1>
     <p class="subtitle">Live status & quick controls.</p>
 
-    <div id="screenlogic-banner" style="display:none; padding:10px 14px; margin:10px 0;
-         border-radius:6px; background:#f4c531; color:#121212; font-weight:600;"></div>
+    <div id="screenlogic-banner" style="display:none; padding:12px 16px; margin:12px 0;
+         border-radius:12px; background:var(--color-warning-soft); color:var(--color-warning-text);
+         border:1px solid var(--color-warning); font-weight:600; font-size:14px;"></div>
 
     <!-- ───── pH (existing) ───── -->
     <section class="data-container">
@@ -164,6 +165,24 @@
     /* ---- socket setup ---- */
     document.addEventListener("DOMContentLoaded", () => {
       const s = io("/status", { transports:["websocket"] });
+
+      // Direct 1Hz pH feed (default namespace). status_update from /status
+      // only fires every 5s and is deduped, so the pH display would lag
+      // whenever the probe filter rejected a few readings in a row.
+      const phSocket = io(window.location.origin);
+      phSocket.on("ph_update", d => {
+        if (d && d.ph !== undefined) {
+          $("#ph-display").text(Number(d.ph).toFixed(2));
+          $("#last-updated").text("Last updated: " + new Date().toLocaleString());
+        }
+      });
+
+      // Fetch once on load so the value appears immediately (don't wait for tick).
+      fetch("/api/ph/latest").then(r => r.json()).then(d => {
+        if (d && d.ph !== undefined) {
+          $("#ph-display").text(Number(d.ph).toFixed(2));
+        }
+      }).catch(() => {});
 
       const CTRL_STATE_LABELS = { 0: "Unknown", 1: "Ready", 2: "Sync", 3: "Service" };
 

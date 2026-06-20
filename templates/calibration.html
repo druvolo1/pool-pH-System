@@ -11,100 +11,42 @@
   <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
 
   <style>
-    /* Container for the two columns */
     .calibration-container {
       display: flex;
-      gap: 2rem;
+      gap: var(--space-lg);
       flex-wrap: wrap;
-      justify-content: center; /* optional: center the columns */
-      margin-top: 30px;
+      margin-top: var(--space-lg);
     }
-
-    /* Each column has a min width and flexible grow */
     .cal-section {
-      flex: 1 1 300px;
-      border: 1px solid #ccc;
-      padding: 1rem;
-      border-radius: 6px;
-      min-width: 300px; 
-      max-width: 400px; /* optional: limit how wide each column gets */
-      margin-bottom: 20px;
+      flex: 1 1 320px;
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      padding: var(--space-lg);
+      border-radius: var(--radius-lg);
+      min-width: 0;
     }
-    .cal-section h2 {
-      margin-top: 0;
-    }
+    .cal-section h2 { margin-top: 0; }
 
-    /* If we need a big "no devices" message, this is hidden by default */
-    #no-devices-message {
-      display: none; 
-      text-align: center;
-      margin-top: 40px;
-    }
+    #no-devices-message { display: none; text-align: center; margin-top: 40px; }
+    #ph-assigned-content, #ec-assigned-content { display: none; }
+    #ph-not-assigned, #ec-not-assigned { display: none; }
 
-    /* Show/hide content within each column */
-    #ph-assigned-content, #ec-assigned-content {
-      display: none; /* hidden by default until we confirm assignment */
-    }
-    #ph-not-assigned, #ec-not-assigned {
-      display: none; /* also hidden by default */
-    }
-
-    /* The calibration row with buttons occupying the full width */
     .cal-btn-row {
       display: flex;
+      flex-wrap: wrap;
       width: 100%;
-      gap: 8px; 
-      margin: 0.5rem 0;
+      gap: var(--space-sm);
+      margin: var(--space-sm) 0;
     }
-
     .cal-btn {
-      flex: 1; /* each button shares row equally */
-      margin: 0; 
-      text-align: center;
-      padding: 16px 14px; /* 2x vertical padding for tall buttons */
-      width: auto !important; 
-      cursor: pointer;
-      border: none;
-      border-radius: 4px;
-      background: linear-gradient(to right, #f4c531, #e2a600);
-      color: #121212;
-      font-size: 15px;
-      font-weight: 600;
+      flex: 1 1 calc(50% - var(--space-sm));
+      margin: 0 !important;
+      height: var(--btn-height);
+      width: auto !important;
     }
-    .cal-btn:hover {
-      background: linear-gradient(to right, #e2a600, #c98e00);
-      transform: scale(1.03);
+    @media (min-width: 640px) {
+      .cal-btn { flex: 1 1 0; }
     }
-
-    /* Danger (red) style for the Clear button */
-    .danger {
-      background-color: #e74c3c; 
-      color: #fff;  
-      border: none;
-    }
-    .danger:hover {
-      background-color: #c0392b;
-      transform: scale(1.03);
-    }
-
-    /* The data display box for pH/EC values */
-    .data-box {
-      font-size: 1.2rem;
-      margin: 0.25rem 0;
-      padding: 0.5rem;
-      background-color: #f0f0f0;
-      color: #121212;
-      border-radius: 4px;
-    }
-
-    /* Log coloring */
-    .success-log {
-      color: green;
-    }
-    .error-log {
-      color: red;
-    }
-
   </style>
 </head>
 <body>

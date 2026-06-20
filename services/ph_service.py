@@ -286,25 +286,46 @@ def parse_buffer(ser):
             old_ph_value = filtered_ph
             last_read_time = datetime.now()
 
-            ph_recent_values.append(filtered_ph)
-            if len(ph_recent_values) > PH_ROLLING_WINDOW:
-                ph_recent_values.pop(0)
+            # Only consider pH for out-of-range alerts when the pool pump has
+            # been running long enough for fresh water to reach the probe.
+            # Stale water in the pipe (pump off) gives misleading readings.
+            try:
+                from services.screenlogic_service import get_pump_on_seconds
+                pump_on_sec = get_pump_on_seconds()
+            except Exception:
+                pump_on_sec = 0.0
+            PUMP_FRESH_WATER_SEC = 60
+            pump_fresh = pump_on_sec >= PUMP_FRESH_WATER_SEC
 
-            s = load_settings()
-            ph_min = s.get("ph_range", {}).get("min", 5.5)
-            ph_max = s.get("ph_range", {}).get("max", 6.5)
-            if len(ph_recent_values) >= PH_ROLLING_WINDOW:
-                avg_ph = sum(ph_recent_values) / len(ph_recent_values)
-                if avg_ph < ph_min or avg_ph > ph_max:
-                    set_status(
-                        "ph_probe",
-                        "out_of_range",
-                        "error",
-                        f"Average pH {avg_ph:.2f} over last {PH_ROLLING_WINDOW} readings is outside recommended range [{ph_min}, {ph_max}]."
-                    )
-                else:
-                    set_status("ph_probe", "out_of_range", "ok",
-                               f"Average pH {avg_ph:.2f} is within recommended range [{ph_min}, {ph_max}].")
+            # Drop any rolling-window readings collected while water was stale
+            # (pump off, or still in the fresh-water warm-up window).
+            if not pump_fresh and ph_recent_values:
+                log_with_timestamp(
+                    f"[DEBUG] Pump not fresh (on_sec={pump_on_sec:.0f}); "
+                    "discarding pH rolling window"
+                )
+                ph_recent_values.clear()
+
+            if pump_fresh:
+                ph_recent_values.append(filtered_ph)
+                if len(ph_recent_values) > PH_ROLLING_WINDOW:
+                    ph_recent_values.pop(0)
+
+                s = load_settings()
+                ph_min = s.get("ph_range", {}).get("min", 5.5)
+                ph_max = s.get("ph_range", {}).get("max", 6.5)
+                if len(ph_recent_values) >= PH_ROLLING_WINDOW:
+                    avg_ph = sum(ph_recent_values) / len(ph_recent_values)
+                    if avg_ph < ph_min or avg_ph > ph_max:
+                        set_status(
+                            "ph_probe",
+                            "out_of_range",
+                            "error",
+                            f"Average pH {avg_ph:.2f} over last {PH_ROLLING_WINDOW} readings is outside recommended range [{ph_min}, {ph_max}]."
+                        )
+                    else:
+                        set_status("ph_probe", "out_of_range", "ok",
+                                   f"Average pH {avg_ph:.2f} is within recommended range [{ph_min}, {ph_max}].")
 
             from status_namespace import emit_status_update
             emit_status_update()

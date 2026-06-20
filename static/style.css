@@ -1,309 +1,362 @@
-/* =========================
-   GLOBAL & BODY STYLES
-   ========================= */
-body {
-  font-family: 'Poppins', sans-serif;
-  background-color: #121212;
-  color: #e0e0e0;
-  margin: 0;
-  padding: 0;
+/* =========================================================================
+   POOL pH SYSTEM - styling inspired by Pool Guardian (Material 3 / flat)
+   - Light theme, blue primary, white cards with soft gray borders
+   - Mobile-first; breakpoints at 640 / 1024
+   ========================================================================= */
+
+:root {
+  /* Brand */
+  --color-primary:        #1447e6;
+  --color-primary-hover:  #1039c2;
+  --color-primary-soft:   #dbeafe;
+  --color-primary-text:   #ffffff;
+
+  /* Surfaces */
+  --color-bg:             #f9fafb;
+  --color-surface:        #ffffff;
+  --color-surface-muted:  #f3f4f6;
+  --color-border:         #e5e7eb;
+  --color-border-strong:  #d1d5db;
+
+  /* Text */
+  --color-text:           #0a0a0a;
+  --color-text-secondary: #4a5565;
+  --color-text-muted:     #6b7280;
+  --color-text-disabled:  #94a3b8;
+  --color-text-on-dark:   #ffffff;
+
+  /* Status */
+  --color-success:        #16a34a;
+  --color-success-soft:   #d1fae5;
+  --color-success-text:   #059669;
+  --color-warning:        #ff6900;
+  --color-warning-soft:   #ffedd4;
+  --color-warning-text:   #ea580c;
+  --color-error:          #dc2626;
+  --color-error-soft:     #fecaca;
+  --color-error-text:     #b91c1c;
+
+  /* Sizing */
+  --radius-sm:  8px;
+  --radius-md:  10px;
+  --radius-lg:  12px;
+  --radius-xl:  14px;
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   12px;
+  --space-lg:   16px;
+  --space-xl:   24px;
+  --space-2xl:  32px;
+  --btn-height: 44px;
+  --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                "Helvetica Neue", Arial, sans-serif;
 }
 
-/* =========================
-   NAVIGATION BAR
-   ========================= */
+/* ----------------------------- reset / base ----------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: var(--font-stack);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  margin: 0;
+  padding: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----------------------------- nav -------------------------------------- */
 nav {
-  background-color: #1e1e1e;
-  padding: 15px;
-  text-align: center;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-md) var(--space-lg);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 nav ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  justify-content: center;
 }
 
-nav ul li {
-  display: inline;
-  margin: 0 15px;
-}
+nav ul li { display: inline-flex; }
 
 nav ul li a {
-  color: #f4c531;
+  color: var(--color-text-secondary);
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.3s ease-in-out;
+  font-size: 14px;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
-nav ul li a:hover,
+nav ul li a:hover { background-color: var(--color-surface-muted); color: var(--color-text); }
 nav ul li a.active {
-  color: #ffffff;
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary);
 }
 
-/* =========================
-   MAIN & HEADINGS
-   ========================= */
+/* ----------------------------- layout ----------------------------------- */
 main {
-  max-width: 90vw;
-  margin: 40px auto;
-  text-align: center;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+  text-align: left;
 }
 
 h1 {
-  font-size: 32px;
-  font-weight: 600;
-  margin-bottom: 10px;
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 var(--space-xs) 0;
+  color: var(--color-text);
 }
 
 h2 {
-  font-size: 24px;
+  font-size: 18px;
   font-weight: 600;
-  color: #e0e0e0;
-  margin-bottom: 15px;
+  color: var(--color-text);
+  margin: 0 0 var(--space-md) 0;
 }
 
 h3 {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 600;
-  color: #f4c531;
-  margin-bottom: 10px;
+  color: var(--color-text);
+  margin: var(--space-lg) 0 var(--space-sm) 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .subtitle {
-  font-size: 18px;
-  color: #b0b0b0;
-  margin-bottom: 30px;
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0 0 var(--space-xl) 0;
 }
 
-/* =========================
-   DATA CONTAINERS
-   ========================= */
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin-bottom: var(--space-xs);
+}
+
+/* ----------------------------- cards ------------------------------------ */
 .data-container {
   position: relative;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 10px rgba(255, 204, 0, 0.2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
   text-align: left;
-  min-height: 120px;
-  overflow: visible;
 }
 
+.data-container h2 + .row-flex,
+.data-container h2 + p { margin-top: var(--space-sm); }
+
+/* Highlighted "dosing in progress" card */
 .dosing-status {
-  background: rgba(244, 197, 49, 0.1);
-  border: 2px solid #f4c531;
-  box-shadow: 0 4px 12px rgba(244, 197, 49, 0.3);
-  transition: all 0.3s ease;
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary);
 }
-
 .dosing-status:not([style*="display: none"]) {
-  animation: pulse 1.5s infinite;
+  animation: dose-pulse 2s ease-in-out infinite;
 }
+.dosing-status h2 { color: var(--color-primary); }
 
-.dosing-status h2 {
-  color: #f4c531;
-  font-size: 24px;
-  margin-bottom: 15px;
-}
-
-.dosing-status p {
-  font-size: 16px;
-  color: #e0e0e0;
-  margin: 10px 0;
-}
-
-.dosing-status p strong {
-  font-weight: 600;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(244, 197, 49, 0.4); }
-  50% { box-shadow: 0 0 10px 5px rgba(244, 197, 49, 0.2); }
-  100% { box-shadow: 0 0 0 0 rgba(244, 197, 49, 0.4); }
+@keyframes dose-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(20, 71, 230, 0); }
+  50%      { box-shadow: 0 0 0 6px rgba(20, 71, 230, 0.12); }
 }
 
 .last-updated {
-  z-index: 999;
-  color: #e0e0e0;
-  font-size: 0.9rem;
-  opacity: 0.8;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  margin-top: var(--space-md);
 }
 
-/* =========================
-   RESPONSIVE FLEX ROW
-   ========================= */
+/* ----------------------------- flex row --------------------------------- */
 .row-flex {
   display: flex;
   flex-wrap: nowrap;
-  gap: 20px;
+  gap: var(--space-lg);
   width: 100%;
 }
-.row-flex > div {
-  flex: 1;
-  min-width: 120px;
-}
-@media (max-width: 768px) {
-  .row-flex { flex-wrap: wrap; }
-  .dosage-section { flex-direction: column; }
-}
+.row-flex > div { flex: 1; min-width: 0; }
 
-/* =========================
-   FORMS & INPUTS
-   ========================= */
-input,
+/* ----------------------------- forms ------------------------------------ */
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="password"],
+input[type="email"],
 select,
 textarea {
   width: 100%;
-  padding: 10px;
-  margin: 8px 0;
-  border: 1px solid #444;
-  border-radius: 5px;
-  background: #1e1e1e;
-  color: #fafafa;
-  font-size: 16px;
-  caret-color: #ffd700;
+  padding: 10px 12px;
+  margin: 4px 0 var(--space-sm) 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 15px;
+  font-family: var(--font-stack);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: #888;
-  opacity: 1;
+input::placeholder, textarea::placeholder {
+  color: var(--color-text-muted);
 }
 
-select {
-  background-color: #2a2a2a;
-}
-select option {
-  background-color: #2a2a2a;
-  color: #f8f8f8;
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(20, 71, 230, 0.15);
 }
 
-input:focus,
-select:focus,
-textarea:focus {
-  outline: 2px solid #f4c531;
-  outline-offset: 0;
-}
-
-/* =========================
-   BUTTONS
-   ========================= */
-button {
-  background: linear-gradient(to right, #f4c531, #e2a600);
-  color: #121212;
-  border: none;
-  padding: 12px 20px;
-  font-size: 16px;
-  font-weight: 600;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: 0.3s;
-  width: 100%;
-  margin-top: 10px;
-}
-
-button:hover {
-  background: linear-gradient(to right, #e2a600, #c98e00);
-  transform: scale(1.05);
-}
-
-button:disabled {
-  background: #555;
-  color: #999;
+input:disabled, select:disabled, textarea:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-text-disabled);
   cursor: not-allowed;
-  transform: none;
-  opacity: 0.5;
 }
 
-/* Secondary Buttons */
+/* ----------------------------- buttons ---------------------------------- */
+button {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border: none;
+  padding: 0 var(--space-lg);
+  height: var(--btn-height);
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
+  width: 100%;
+  margin-top: var(--space-sm);
+  font-family: var(--font-stack);
+}
+
+button:hover:not(:disabled) { background: var(--color-primary-hover); }
+button:active:not(:disabled) { transform: translateY(1px); }
+button:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+/* Secondary (neutral) */
 .secondary-btn {
-  background: linear-gradient(to right, #b0b0b0, #757575);
-  color: #fff;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-strong);
 }
-.secondary-btn:hover {
-  background: linear-gradient(to right, #757575, #505050);
-}
-
-/* Stop Button */
-.stop-btn {
-  background: linear-gradient(to right, #dc3545, #c82333);
-  color: #fff;
-}
-.stop-btn:hover:not(:disabled) {
-  background: linear-gradient(to right, #c82333, #bd2130);
-  transform: scale(1.05);
+.secondary-btn:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+  color: var(--color-text);
 }
 
-/* =========================
-   CHECKBOXES
-   ========================= */
+/* Destructive */
+.stop-btn, .danger {
+  background: var(--color-error);
+  color: #fff;
+}
+.stop-btn:hover:not(:disabled),
+.danger:hover:not(:disabled) {
+  background: var(--color-error-text);
+}
+
+/* ----------------------------- on/off pill buttons ---------------------- */
+.btn-on-active  {
+  background: var(--color-success) !important;
+  color: #fff !important;
+  border: 1px solid var(--color-success) !important;
+}
+.btn-off-active {
+  background: var(--color-error) !important;
+  color: #fff !important;
+  border: 1px solid var(--color-error) !important;
+}
+.btn-inactive   {
+  background: var(--color-surface) !important;
+  color: var(--color-text-muted) !important;
+  border: 1px solid var(--color-border-strong) !important;
+}
+
+/* ----------------------------- checkboxes ------------------------------- */
 .checkbox-container {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-sm);
 }
-.checkbox-container input { width: auto; }
+.checkbox-container input { width: auto; accent-color: var(--color-primary); margin: 0; }
+.checkbox-container label { margin: 0; }
 
-/* =========================
-   STATIC CONFIG
-   ========================= */
+input[type="checkbox"], input[type="radio"] {
+  accent-color: var(--color-primary);
+  width: 18px;
+  height: 18px;
+}
+
+/* ----------------------------- static config ---------------------------- */
 .static-config {
   display: none;
-  padding: 10px;
-  border-radius: 5px;
-  margin-top: 10px;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+  background: var(--color-surface-muted);
 }
-.static-config input { margin-bottom: 5px; }
+.static-config input { margin-bottom: var(--space-xs); }
 
-/* =========================
-   ERROR MESSAGE
-   ========================= */
+/* ----------------------------- error message ---------------------------- */
 .error-message {
-  color: #ff4c4c;
-  font-size: 16px;
-  font-weight: bold;
+  color: var(--color-error);
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/* =========================
-   FIELDSETS
-   ========================= */
+/* ----------------------------- fieldset --------------------------------- */
 fieldset {
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 15px;
-  margin-bottom: 15px;
-  border-radius: 5px;
+  border: 1px solid var(--color-border);
+  padding: var(--space-md) var(--space-lg);
+  margin: var(--space-md) 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 legend {
-  font-size: 18px;
+  font-size: 13px;
   font-weight: 600;
-  color: #f4c531;
+  color: var(--color-text-secondary);
+  padding: 0 var(--space-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
+/* ----------------------------- grid ------------------------------------- */
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-lg);
   max-width: 1200px;
-  margin: auto;
-  padding: 20px;
+  margin: 0 auto;
 }
 
-/* =========================
-   ON/OFF BUTTON COLORS
-   ========================= */
-.btn-on-active  { background: #28a745 !important; color: #fff !important; }
-.btn-off-active { background: #dc3545 !important; color: #fff !important; }
-.btn-inactive   { background: #ccc !important;    color: #000 !important; }
-
-/* =========================
-   DOSAGE PAGE LAYOUT
-   ========================= */
+/* ----------------------------- dosage layout ---------------------------- */
 .dosage-section {
   display: flex;
-  gap: 20px;
+  gap: var(--space-lg);
   align-items: stretch;
 }
 .dosage-section .data-container {
@@ -312,37 +365,102 @@ legend {
   flex-direction: column;
 }
 
-/* Valve-table helpers */
+/* ----------------------------- valves ----------------------------------- */
 #valve-table {
-  width: 80%;
+  width: 100%;
   margin: 0 auto;
   border-collapse: collapse;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+#valve-table th, #valve-table td {
+  padding: var(--space-md);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+#valve-table th {
+  background: var(--color-surface-muted);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--color-text-secondary);
 }
 .valve-rename-cell {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-sm);
 }
 .small-btn {
   width: auto !important;
   margin-top: 0 !important;
-  padding: 6px 12px;
-  font-size: 14px;
-  cursor: pointer;
+  padding: 6px 12px !important;
+  height: auto !important;
+  font-size: 13px !important;
 }
 
-/* Disabled overlay */
-.disabled-section {
-  opacity: 0.9;
-  pointer-events: none;
-}
+/* ----------------------------- misc ------------------------------------- */
+.disabled-section { opacity: 0.6; pointer-events: none; }
 
-/* pH / sensor value boxes */
 .data-box {
-  font-size: 1.2rem;
-  margin: 0.25rem 0;
-  padding: 0.5rem;
-  background-color: #2a2a2a;
-  color: #ffffff;
-  border-radius: 4px;
+  font-size: 18px;
+  font-weight: 600;
+  margin: var(--space-xs) 0;
+  padding: var(--space-md);
+  background-color: var(--color-surface-muted);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+
+a { color: var(--color-primary); }
+a:hover { color: var(--color-primary-hover); }
+
+table { border-collapse: collapse; width: 100%; }
+th, td { padding: var(--space-sm) var(--space-md); text-align: left; }
+
+/* Lists used as logs (e.g. calibration page) */
+#ph-log-list, #ec-log-list {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-md) 0 0 0;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 13px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+#ph-log-list li, #ec-log-list li {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+#ph-log-list li:last-child, #ec-log-list li:last-child { border-bottom: none; }
+.success-log { color: var(--color-success-text); }
+.error-log   { color: var(--color-error-text); }
+
+/* ----------------------------- responsive ------------------------------- */
+@media (max-width: 640px) {
+  main { padding: var(--space-lg) var(--space-md); }
+  h1   { font-size: 22px; }
+  h2   { font-size: 17px; }
+
+  nav  { padding: var(--space-sm) var(--space-md); }
+  nav ul li a { padding: 6px 10px; font-size: 13px; }
+
+  .row-flex { flex-wrap: wrap; gap: var(--space-md); }
+  .row-flex > div { flex: 1 1 100%; }
+
+  .dosage-section { flex-direction: column; gap: var(--space-md); }
+  .settings-grid  { grid-template-columns: 1fr; gap: var(--space-md); }
+
+  .data-container { padding: var(--space-md); border-radius: var(--radius-md); }
+  fieldset        { padding: var(--space-sm) var(--space-md); }
+
+  #valve-table th, #valve-table td { padding: var(--space-sm); font-size: 13px; }
+}
+
+@media (max-width: 380px) {
+  nav ul { gap: 0; }
+  nav ul li a { padding: 6px 8px; font-size: 12px; }
 }

@@ -11,7 +11,8 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any, Dict, List
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 import eventlet  # Added for consistency
 eventlet.monkey_patch()  # Ensure patched
@@ -27,6 +28,15 @@ _log = logging.getLogger(__name__)
 
 # Most-recent flattened payload
 _latest_data: Dict[str, Any] = {}
+
+# Flap suppression: don't notify until poll has been failing continuously
+# for OFFLINE_NOTIFY_THRESHOLD_SEC. Cached data is still cleared immediately.
+_first_failure_time: Optional[datetime] = None
+OFFLINE_NOTIFY_THRESHOLD_SEC = 60
+
+# Track when the pool pump transitioned to ON, so consumers (e.g. pH alerts)
+# can require a "fresh water" period before trusting readings.
+_pump_on_since: Optional[datetime] = None
 
 
 # ───────────────────────── helper: flatten any ScreenLogic tree ─────────────
@@ -75,6 +85,7 @@ class ScreenLogicService:
 
     # main loop --------------------------------------------------------------
     def _run(self) -> None:
+        global _first_failure_time, _pump_on_since
         while not self._stop.ready():
             cfg = load_settings().get("screenlogic", {})
             interval = int(cfg.get("poll_interval", 5)) or 5
@@ -110,10 +121,18 @@ class ScreenLogicService:
                 _latest_data.clear()
                 _latest_data.update(snapshot)
 
+                # Track pump-on transitions for downstream consumers.
+                if snapshot.get("pump.0.state.value") == 1:
+                    if _pump_on_since is None:
+                        _pump_on_since = datetime.now()
+                else:
+                    _pump_on_since = None
+
                 _log.debug("[ScreenLogic] update (%d fields)", len(snapshot))
                 set_status("screenlogic", "connection", "ok",
                            f"Connected to {host} ({len(snapshot)} fields)")
                 clear_error("SCREENLOGIC_OFFLINE")
+                _first_failure_time = None
 
                 # broadcast to websocket clients
                 from status_namespace import emit_status_update
@@ -121,10 +140,19 @@ class ScreenLogicService:
 
             except Exception as exc:
                 _log.warning("[ScreenLogic] poll failed: %s", exc)
-                set_status("screenlogic", "connection", "error",
-                           f"Poll failed for {host}: {exc}")
-                set_error("SCREENLOGIC_OFFLINE")
+                now = datetime.now()
+                if _first_failure_time is None:
+                    _first_failure_time = now
+                offline_sec = (now - _first_failure_time).total_seconds()
+                # Always invalidate cached data so downstream consumers don't
+                # trust stale state during the outage.
                 _latest_data.clear()
+                _pump_on_since = None
+                # Only notify once the outage has lasted past the flap threshold.
+                if offline_sec >= OFFLINE_NOTIFY_THRESHOLD_SEC:
+                    set_status("screenlogic", "connection", "error",
+                               f"Poll failed for {host} for {int(offline_sec)}s: {exc}")
+                    set_error("SCREENLOGIC_OFFLINE")
 
             eventlet.sleep(interval)
 
@@ -133,6 +161,14 @@ class ScreenLogicService:
 def get_latest_screenlogic_data() -> Dict[str, Any]:
     """Return a *copy* of the most recent flattened snapshot."""
     return _latest_data.copy()
+
+
+def get_pump_on_seconds() -> float:
+    """Seconds since the pool pump transitioned to ON, or 0 if pump is off /
+    state is unknown."""
+    if _pump_on_since is None:
+        return 0.0
+    return (datetime.now() - _pump_on_since).total_seconds()
 
 
 # singleton created at import-time; app.py calls .start()
